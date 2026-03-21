@@ -10,13 +10,11 @@ import { fundingTableLabel, parseFundingField } from '~/utils/fundingPayload'
 
 const toast = useToast()
 const tauri = useVaultTauri()
-const runtimeConfig = useRuntimeConfig()
-
-function solRpcUrl(): string {
-	const u = runtimeConfig.public.solanaRpcUrl
-	const s = typeof u === 'string' ? u.trim() : ''
-	return s || 'https://api.mainnet-beta.solana.com'
-}
+const {
+	solRpcUrl,
+	lockAfterInactiveSeconds,
+	clearPrivateClipboardAfterSeconds,
+} = useVaultSettings()
 
 const phase = ref<'gate' | 'vault'>('gate')
 const gateTab = ref<'open' | 'create'>('open')
@@ -356,7 +354,17 @@ watch(selectedGroupId, async (gid) => {
 	}
 })
 
-function lockVault() {
+let privateClipboardClearTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearPrivateClipboardTimer() {
+	if (privateClipboardClearTimer !== null) {
+		clearTimeout(privateClipboardClearTimer)
+		privateClipboardClearTimer = null
+	}
+}
+
+function lockVault(reason: 'manual' | 'idle' = 'manual') {
+	clearPrivateClipboardTimer()
 	tree.value = null
 	sessionPassword.value = ''
 	selectedGroupId.value = null
@@ -366,8 +374,22 @@ function lockVault() {
 	phase.value = 'gate'
 	createPasswordConfirm.value = ''
 	createKdfStrength.value = 1
-	toast.add({ title: 'Vault locked', color: 'neutral' })
+	toast.add({
+		title:
+			reason === 'idle' ? 'Vault locked after inactivity' : 'Vault locked',
+		color: 'neutral',
+	})
 }
+
+const vaultUnlocked = computed(
+	() => phase.value === 'vault' && !!tree.value,
+)
+
+useVaultIdleLock({
+	enabled: vaultUnlocked,
+	timeoutSeconds: lockAfterInactiveSeconds,
+	onIdle: () => lockVault('idle'),
+})
 
 watch(gateTab, (t) => {
 	if (t === 'open') createPasswordConfirm.value = ''
@@ -572,6 +594,107 @@ async function confirmDeleteEntry() {
 	}
 }
 
+const entryMenuOpen = ref(false)
+const entryMenuTargetId = ref<string | null>(null)
+const entryMenuPos = ref({ x: 0, y: 0 })
+
+const entryMenuTargetEntry = computed(() => {
+	const id = entryMenuTargetId.value
+	if (!id) return null
+	return groupEntries.value.find((e) => e.id === id) ?? null
+})
+
+const entryMenuTriggerStyle = computed(() => {
+	const { x, y } = entryMenuPos.value
+	return entryMenuOpen.value
+		? { left: `${x}px`, top: `${y}px` }
+		: { left: '-9999px', top: '-9999px' }
+})
+
+const entryMenuItems = computed(() => {
+	const ent = entryMenuTargetEntry.value
+	if (!ent) return []
+	const pk = ent.fields.PublicKey?.trim() || ''
+	const sk = ent.fields.PrivateKey?.trim() || ''
+	return [
+		[
+			{
+				label: 'Copy public key',
+				icon: 'i-lucide-copy',
+				disabled: !pk,
+				onSelect: () => {
+					void copyEntryKey('public')
+				},
+			},
+		],
+		[
+			{
+				label: 'Copy private key',
+				icon: 'i-lucide-key-round',
+				disabled: !sk,
+				onSelect: () => {
+					void copyEntryKey('private')
+				},
+			},
+		],
+	]
+})
+
+async function copyEntryKey(kind: 'public' | 'private') {
+	const ent = entryMenuTargetEntry.value
+	if (!ent) return
+	const text =
+		kind === 'public'
+			? ent.fields.PublicKey?.trim() ?? ''
+			: ent.fields.PrivateKey?.trim() ?? ''
+	if (!text) {
+		toast.add({ title: 'Nothing to copy', color: 'warning' })
+		return
+	}
+	clearPrivateClipboardTimer()
+	try {
+		await navigator.clipboard.writeText(text)
+		toast.add({
+			title: kind === 'public' ? 'Public key copied' : 'Private key copied',
+			color: 'success',
+		})
+		if (kind === 'private') {
+			const sec = clearPrivateClipboardAfterSeconds.value
+			if (sec > 0) {
+				privateClipboardClearTimer = setTimeout(async () => {
+					privateClipboardClearTimer = null
+					try {
+						await navigator.clipboard.writeText('')
+					} catch {
+						/* some hosts reject empty clipboard writes */
+					}
+				}, sec * 1000)
+			}
+		}
+	} catch {
+		toast.add({ title: 'Could not copy to clipboard', color: 'error' })
+	} finally {
+		entryMenuOpen.value = false
+	}
+}
+
+function onEntryRowContextmenu(
+	e: Event,
+	row: { original: { id: string } },
+) {
+	if (!(e instanceof MouseEvent)) return
+	e.preventDefault()
+	entryMenuTargetId.value = row.original.id
+	entryMenuPos.value = { x: e.clientX, y: e.clientY }
+	nextTick(() => {
+		entryMenuOpen.value = true
+	})
+}
+
+watch(entryMenuOpen, (open) => {
+	if (!open) entryMenuTargetId.value = null
+})
+
 </script>
 
 <template>
@@ -723,12 +846,33 @@ async function confirmDeleteEntry() {
 					>
 						Create vault
 					</UButton>
+
+					<div class="flex justify-center pt-1">
+						<UButton
+							to="/settings"
+							variant="link"
+							color="neutral"
+							size="sm"
+							icon="i-lucide-settings"
+						>
+							Settings
+						</UButton>
+					</div>
 				</div>
 			</UCard>
 		</div>
 
 		<!-- Main workspace -->
 		<div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+			<UDropdownMenu v-model:open="entryMenuOpen" :items="entryMenuItems">
+				<button
+					type="button"
+					class="fixed z-50 h-px w-px overflow-hidden border-0 p-0 opacity-0"
+					:style="entryMenuTriggerStyle"
+					tabindex="-1"
+					aria-hidden="true"
+				/>
+			</UDropdownMenu>
 			<UHeader class="border-b border-default" :toggle="false">
 				<template #left>
 					<UBadge
@@ -742,12 +886,19 @@ async function confirmDeleteEntry() {
 
 				<template #right>
 					<div class="flex items-center gap-2">
+						<UButton
+							to="/settings"
+							color="neutral"
+							variant="ghost"
+							icon="i-lucide-settings"
+							aria-label="Settings"
+						/>
 						<UColorModeButton />
 						<UButton
 							color="neutral"
 							variant="soft"
 							icon="i-lucide-lock"
-							@click="lockVault"
+							@click="() => lockVault()"
 						>
 							Lock
 						</UButton>
@@ -824,6 +975,7 @@ async function confirmDeleteEntry() {
 								empty="No wallets in this folder. Use Add wallet to create one."
 								class="w-full shrink-0"
 								:get-row-id="entryRowId"
+								:on-contextmenu="onEntryRowContextmenu"
 							>
 								<template #balance-cell="{ row }">
 									<span class="font-mono text-sm tabular-nums">{{
