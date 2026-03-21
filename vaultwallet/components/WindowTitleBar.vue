@@ -53,12 +53,9 @@ async function onTitleBarDblClick() {
 		v-if="isTauri"
 		class="titlebar border-default bg-elevated/90 flex h-11 shrink-0 cursor-default items-stretch border-b backdrop-blur-md"
 	>
-		<!-- Match width of `.traffic-lights` so the title stays visually centered -->
-		<div class="w-[96px] shrink-0" aria-hidden="true" />
-
 		<div
 			data-tauri-drag-region
-			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-center gap-2 py-2 text-sm font-medium select-none"
+			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-start gap-2 py-2 pl-3 text-sm font-medium select-none"
 			@dblclick="onTitleBarDblClick"
 		>
 			<UIcon name="i-lucide-shield" class="text-primary size-4 shrink-0 opacity-90" />

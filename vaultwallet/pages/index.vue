@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { join } from '@tauri-apps/api/path'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import {
 	entryDisplayName,
@@ -20,6 +21,8 @@ const phase = ref<'gate' | 'vault'>('gate')
 const gateTab = ref<'open' | 'create'>('open')
 
 const vaultPath = ref('')
+/** Base name only (e.g. `my-vault`); full path is chosen on Create via folder dialog. */
+const createVaultFileName = ref('')
 const password = ref('')
 const createPasswordConfirm = ref('')
 const createKdfStrength = ref(1)
@@ -352,6 +355,19 @@ async function pickVaultFile() {
 	}
 }
 
+/** Strip illegal path chars; ensure `.wlvlt` suffix. */
+function normalizeCreateVaultFileName(raw: string): string {
+	let t = raw
+		.trim()
+		.replace(/[/\\]+/g, '')
+		.replace(/[<>:"|?*]+/g, '')
+	if (!t) return ''
+	if (!t.toLowerCase().endsWith('.wlvlt')) {
+		t = `${t}.wlvlt`
+	}
+	return t
+}
+
 async function handleOpenVault() {
 	if (!vaultPath.value.trim() || !password.value) {
 		toast.add({ title: 'Path and password required', color: 'warning' })
@@ -374,8 +390,12 @@ async function handleOpenVault() {
 }
 
 async function handleCreateVault() {
-	if (!vaultPath.value.trim() || !password.value) {
-		toast.add({ title: 'Path and password required', color: 'warning' })
+	const baseName = normalizeCreateVaultFileName(createVaultFileName.value)
+	if (!baseName || !password.value) {
+		toast.add({
+			title: 'Vault name and password required',
+			color: 'warning',
+		})
 		return
 	}
 	if (password.value !== createPasswordConfirm.value) {
@@ -386,6 +406,29 @@ async function handleCreateVault() {
 		})
 		return
 	}
+
+	let dir: string
+	try {
+		const picked = await openDialog({
+			directory: true,
+			multiple: false,
+			title: 'Choose folder for vault',
+		})
+		if (picked === null) return
+		if (Array.isArray(picked)) {
+			if (!picked.length) return
+			dir = picked[0]
+		} else {
+			dir = picked
+		}
+	} catch (e) {
+		showError(e)
+		return
+	}
+
+	const fullPath = (await join(dir, baseName)).trim()
+	vaultPath.value = fullPath
+
 	loading.value = true
 	try {
 		const crypto =
@@ -399,12 +442,12 @@ async function handleCreateVault() {
 					}
 				: null
 		await tauri.vaultCreate(
-			vaultPath.value.trim(),
+			fullPath,
 			password.value,
 			createKdfStrength.value,
 			crypto,
 		)
-		const t = await tauri.vaultOpen(vaultPath.value.trim(), password.value)
+		const t = await tauri.vaultOpen(fullPath, password.value)
 		tree.value = t
 		sessionPassword.value = password.value
 		password.value = ''
@@ -499,6 +542,7 @@ function lockVault(reason: 'manual' | 'idle' = 'manual') {
 	deleteEntryModal.value = false
 	phase.value = 'gate'
 	createPasswordConfirm.value = ''
+	createVaultFileName.value = ''
 	createKdfStrength.value = 1
 	createAccordionValue.value = undefined
 	createCipher.value = 'aes256cbc'
@@ -861,8 +905,19 @@ watch(entryMenuOpen, (open) => {
 
 				<div :class="gateTab === 'create' ? 'space-y-3' : 'space-y-4'">
 					<UFormField
-						:label="gateTab === 'create' ? 'Save as' : 'Vault file (.wlvlt)'"
+						v-if="gateTab === 'create'"
+						label="Vault name"
+						description="You will pick a folder when you click Create vault."
 					>
+						<UInput
+							v-model="createVaultFileName"
+							placeholder="e.g. my-vault"
+							class="w-full"
+							icon="i-lucide-file-lock"
+							autocomplete="off"
+						/>
+					</UFormField>
+					<UFormField v-else label="Vault file (.wlvlt)">
 						<div class="flex gap-2">
 							<UInput
 								v-model="vaultPath"
