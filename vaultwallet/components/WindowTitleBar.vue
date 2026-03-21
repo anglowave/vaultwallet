@@ -58,8 +58,7 @@ async function onTitleBarDblClick() {
 			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-start gap-2 py-2 pl-3 text-sm font-medium select-none"
 			@dblclick="onTitleBarDblClick"
 		>
-			<UIcon name="i-lucide-shield" class="text-primary size-4 shrink-0 opacity-90" />
-			<span class="text-highlighted truncate">VaultWallet</span>
+			<span class="text-highlighted truncate">vaultwallet</span>
 		</div>
 
 		<div
