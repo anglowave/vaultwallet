@@ -1,0 +1,8 @@
+# Cargo — compiled artifacts
+/target/
+
+# Tauri CLI — regenerated on dev/build
+/gen/
+
+# rustfmt
+**/*.rs.bk

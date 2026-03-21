@@ -1,0 +1,97 @@
+{
+	"version": 1,
+	"exchanges": [
+		{
+			"name": "Binance",
+			"icon": "/exchanges/binance.svg",
+			"addresses": [
+				"9WzDXwS2r7h2qZs4gR2o63eVUsVTNff7kwh28ykVfoUf",
+				"G7vNg68KfbjVLCTc8Uw9JVmaC4ZajpX97ApkToBqvviy",
+				"53unSgGWqEWANcPYRF35B2Bgf8BkszUtcccKiXwGGLyr",
+				"9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+				"GK35nWN6ZHSGZrRTf8kTQd8RkFCighChPEb41XwSFVAC",
+				"GBrURzmtWujJRTA3Bkvo7ZgWuZYLMMwPCwre7BejJXnK",
+				"3yFwqXBfZY4jBVUafQ1YEXw189y2dN3V5KQq9uzBDy1E",
+				"3gd3dqgtJ4jWfBfLYTX67DALFetjc5iS72sCgRhCkW2u",
+				"5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+				"2ojv9BAiHUrvsm9gxDe7fJSzbNZSJcxZvf8dqmWGHG8S",
+				"6QJzieMYfp7yr3EdrePaQoG3Ghxs2wM98xSLRu8Xh56U"
+			]
+		},
+		{
+			"name": "Changenow",
+			"icon": "/exchanges/changenow.svg",
+			"addresses": ["G2YxRa6wt1qePMwfJzdXZG62ej4qaTC7YURzuh2Lwd3t"]
+		},
+		{
+			"name": "Changelly",
+			"icon": "/exchanges/changelly.svg",
+			"addresses": ["DQ5JWbJyWdJeyBxZuuyu36sUBud6L6wo3aN1QC1bRmsR"]
+		},
+		{
+			"name": "Coinbase",
+			"icon": "/exchanges/coinbase.svg",
+			"addresses": [
+				"H8sYh9vDOMkMt2rt7NmBGG99nmCaTKtyfPBkH5RAw2LR",
+				"FUKB7YPxP3vVQ4nry7LAzFcyUqPvswH6ciyRoReUYm7f",
+				"AafGzY9eiC5Ud3YFZQwkaKApp48cVBAT2kksGvEjhUvH",
+				"AzAvbCQsXurd2PbGLYcB61tyvE8kLDaZShE1S5Bp3WeS",
+				"GCRJD52pGwcCSs4oswYxTBCPatxY1P6WpxCC9R9zty6r",
+				"59L2oxymiQQ9Hvhh92nt8Y7nDYjsauFkdb3SybdnsG6h",
+				"eynpJ4nVgJnCPMzSgJ4c5AmwstAvQRn4QqdAhGBynf2",
+				"6mearRPb9Bma9Ad9wCKnGtVbTeqDyZQ6PPxDRpBUNdJU",
+				"8JUEoHNMbWM4eegcMvx6ZQJt3V3fbo8JNjpWiCtJgxfF",
+				"CKy3KzEMSL1PQV6Wppggoqi2nGA7teE4L7JipEK89yqj",
+				"i9XvhQqBCTQapqaFKPDuCbtPYMCwELmX8VTCsDhRG7d",
+				"6LzKPJ1Y6wdYTLfGDxe9WwoKpwAVMLHwXxmQpRgdD6ng",
+				"3vxheE5C46XzK4XftziRhwAf8QAfipD7HXXWj25mgkom",
+				"Ahgd7ZczsP6XcWuhsF1Hn7i9W31uHMMPkmffrALL7ers",
+				"8mQnMuApYmNouGvj9wVL2Sh21DFsrzb3sbbFL3rUHXr5",
+				"FpwQQhQQoEaVu3WU2qZMfF1hx48YyfwsLoRgXG83E99Q",
+				"3qP77PzrHxSrW1S8dH4Ss1dmpJDHpC6ATVgwy5FmXDEf",
+				"F4C34HorTSr8C7Zmwj8Kdrbmq5XjV9d8iJywp74L8sZf",
+				"85cPov8nuRCkJ88VNMcHaHZ26Ux85PbSrHW4jg7izW4h",
+				"9obNtb5GyUegcs3a1CbBkLuc5hEWynWfJC6gjz5uWQkE",
+				"BESeJ71U2d6V1oUEXzLmWktHWwsgvFsevYjXtYicjLhp",
+				"py5jDEUAynTufQHM7P6Tu9M8NUd8JYux7aMcLXcC51q",
+				"G6zmnfSdG6QJaDWYwbGQ4dpCSUC4gvjfZxYQ4ZharV7C",
+				"GzHZpVPqDLK7sV6cFskSC4qaDzYWYryhf51VoFPtUvfz",
+				"4pHKEisSmAr5CSump4dJnTJgG6eugmtieXcUxDBcQcG5",
+				"DPqsobysNf5iA9w7zrQM8HLzCKZEDMkZsWbiidsAt1xo",
+				"H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS",
+				"2PoMLnppbphUWkNReF15BJ4a6c4B348GnStSEv9tFsY1",
+				"D89hHJT5Aqyx1trP6EnGY9jJUB3whgnq3aUvvCqedvzf",
+				"146yGthSmnTPuCo6Zfbmr56YbAyWZ3rzAhRcT7tTF5ha"
+			]
+		},
+		{
+			"name": "Kraken",
+			"icon": "/exchanges/kraken.svg",
+			"addresses": [
+				"GJWRdXh8qgC7E2noKGkvrRZtGJPD7WvVManEXZDV4mQZ",
+				"CDhUgGEiUxx1aTbnoiSAKcmBhnGUFRQ6AMzuLQRD5VFZ",
+				"FWznbcNXWQuHTawe9RxvQ2LdCENssh12dsznf4RiouN5",
+				"F7RkX6Y1qTfBqoX5oHoZEgrG1Dpy55UZ3GfWwPbM58nQ"
+			]
+		},
+		{
+			"name": "Gate.io",
+			"icon": "/exchanges/gate-io.svg",
+			"addresses": [
+				"u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w",
+				"HiRpdAZifEsZGdzQ5Xo5wcnaH3D2Jj9SoNsUzcYNK78J"
+			]
+		},
+		{
+			"name": "OKX",
+			"icon": "/exchanges/okx.svg",
+			"addresses": [
+				"AEZoku1fLfUz5JYJ3kJ5YVdf3QT1T4RwdggGbuR8Eakd",
+				"9un5wqE3q4oCjyrDkwsdD48KteCJitQX5978Vh7KKxHo",
+				"C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo",
+				"5VCwKtCXgCJ6kit5FybXjvriW3xELsFDhYrPSqtJNmcD",
+				"is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV"
+			]
+		}
+	]
+}

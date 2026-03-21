@@ -1,0 +1,53 @@
+# Workspace root — applies to vaultwallet (Nuxt/Tauri) and vaultwallet-core (Rust)
+
+# Rust / Cargo (every crate)
+**/target/
+
+# Tauri generated assets (schemas, etc.)
+**/src-tauri/gen/
+
+# Node / Nuxt / Vite
+**/node_modules/
+**/.nuxt/
+**/.output/
+**/.nitro/
+**/.vite/
+**/.cache/
+
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Env & local overrides
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs & debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Test / coverage
+coverage
+.nyc_output
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor
+**/.vscode/*
+!**/.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,102 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+@theme {
+	--font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* VaultWallet: primary accent = black (light) / white (dark); blue secondary */
+@layer theme {
+	/*
+	 * Light: true black through 600 (same idea as dark white) so
+	 * hover:bg-primary/75 does not wash out to gray on a white page.
+	 */
+	html:not(.dark) {
+		--ui-color-primary-50: #000000;
+		--ui-color-primary-100: #000000;
+		--ui-color-primary-200: #000000;
+		--ui-color-primary-300: #000000;
+		--ui-color-primary-400: #000000;
+		--ui-color-primary-500: #000000;
+		--ui-color-primary-600: #000000;
+		--ui-color-primary-700: #262626;
+		--ui-color-primary-800: #404040;
+		--ui-color-primary-900: #000000;
+		--ui-color-primary-950: #000000;
+		--ui-primary: var(--ui-color-primary-500);
+	}
+
+	/* html.dark beats Nuxt’s .dark so these tokens win */
+	html.dark {
+		/* Surfaces */
+		--ui-bg: #030303;
+		--ui-bg-muted: #0a0a0a;
+		--ui-bg-elevated: #101010;
+		--ui-bg-accented: #171717;
+		--ui-bg-inverted: #f5f5f4;
+
+		/* Text */
+		--ui-text-dimmed: #525252;
+		--ui-text-muted: #737373;
+		--ui-text-toned: #a3a3a3;
+		--ui-text: #d4d4d4;
+		--ui-text-highlighted: #fafafa;
+		--ui-text-inverted: #0a0a0a;
+
+		/* Borders */
+		--ui-border: #222222;
+		--ui-border-muted: #1a1a1a;
+		--ui-border-accented: #262626;
+		--ui-border-inverted: #fafafa;
+
+		/* Primary: true white through 600 so /75 opacity stays white, not gray */
+		--ui-color-primary-50: #ffffff;
+		--ui-color-primary-100: #ffffff;
+		--ui-color-primary-200: #ffffff;
+		--ui-color-primary-300: #ffffff;
+		--ui-color-primary-400: #ffffff;
+		--ui-color-primary-500: #ffffff;
+		--ui-color-primary-600: #ffffff;
+		--ui-color-primary-700: #e5e5e5;
+		--ui-color-primary-800: #d4d4d4;
+		--ui-color-primary-900: #a3a3a3;
+		--ui-color-primary-950: #737373;
+
+		/* Secondary: blue (supporting accent) */
+		--ui-color-secondary-50: #eff6ff;
+		--ui-color-secondary-100: #dbeafe;
+		--ui-color-secondary-200: #bfdbfe;
+		--ui-color-secondary-300: #93c5fd;
+		--ui-color-secondary-400: #60a5fa;
+		--ui-color-secondary-500: #3b82f6;
+		--ui-color-secondary-600: #2563eb;
+		--ui-color-secondary-700: #1d4ed8;
+		--ui-color-secondary-800: #1e40af;
+		--ui-color-secondary-900: #1e3a8a;
+		--ui-color-secondary-950: #172554;
+
+		--ui-primary: var(--ui-color-primary-500);
+		--ui-secondary: var(--ui-color-secondary-500);
+	}
+}
+
+/*
+ * Nuxt UI solid primary: hover:bg-primary/75 blends with the page and looks gray.
+ * Keep hover/active fully opaque.
+ */
+html.dark :is(button, a).bg-primary:hover,
+html.dark :is(button, a).bg-primary:active {
+	background-color: #ffffff !important;
+}
+
+html:not(.dark) :is(button, a).bg-primary:hover,
+html:not(.dark) :is(button, a).bg-primary:active {
+	background-color: #000000 !important;
+}
+
+html,
+body,
+#__nuxt {
+	min-height: 100%;
+	font-family: var(--font-sans);
+}
