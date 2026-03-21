@@ -83,6 +83,70 @@ watch(createAccordionValue, (v) => {
 	if (v === 'adv') syncCreateParamsFromPresetSlider()
 })
 
+/** Simple heuristic for the create-vault password meter (no network). */
+function passwordStrength(pwd: string): {
+	level: 0 | 1 | 2 | 3 | 4
+	label: string
+} {
+	if (!pwd.length) {
+		return { level: 0, label: '' }
+	}
+	let score = 0
+	if (pwd.length >= 8) score++
+	if (pwd.length >= 12) score++
+	if (/[a-z]/.test(pwd)) score++
+	if (/[A-Z]/.test(pwd)) score++
+	if (/\d/.test(pwd)) score++
+	if (/[^a-zA-Z0-9]/.test(pwd)) score++
+	let level: 1 | 2 | 3 | 4
+	if (pwd.length < 8) {
+		level = 1
+	} else if (score <= 4) {
+		level = 2
+	} else if (score <= 5) {
+		level = 3
+	} else {
+		level = 4
+	}
+	const labels: Record<1 | 2 | 3 | 4, string> = {
+		1: 'Weak',
+		2: 'Fair',
+		3: 'Good',
+		4: 'Strong',
+	}
+	return { level, label: labels[level] }
+}
+
+const createPasswordStrength = computed(() => passwordStrength(password.value))
+
+/** Per-segment fill: avoid stacking `bg-muted` + fill (Tailwind order can hide the fill). */
+function createPasswordStrengthSegmentClass(
+	level: 0 | 1 | 2 | 3 | 4,
+	seg: number,
+): string {
+	const filled = level > 0 && seg <= level
+	if (!filled) return 'bg-muted h-full min-w-0 flex-1 rounded-full transition-colors'
+	if (level === 1) {
+		return 'h-full min-w-0 flex-1 rounded-full bg-red-500 transition-colors dark:bg-red-400'
+	}
+	if (level === 2) {
+		return 'h-full min-w-0 flex-1 rounded-full bg-amber-500 transition-colors dark:bg-amber-400'
+	}
+	if (level === 3) {
+		return 'h-full min-w-0 flex-1 rounded-full bg-sky-600 transition-colors dark:bg-sky-400'
+	}
+	return 'h-full min-w-0 flex-1 rounded-full bg-green-600 transition-colors dark:bg-green-500'
+}
+
+const createPasswordStrengthLabelClass = computed(() => {
+	const l = createPasswordStrength.value.level
+	if (l <= 0) return 'text-muted'
+	if (l === 1) return 'text-red-600 dark:text-red-400'
+	if (l === 2) return 'text-amber-600 dark:text-amber-400'
+	if (l === 3) return 'text-sky-600 dark:text-sky-400'
+	return 'text-green-600 dark:text-green-400'
+})
+
 const loading = ref(false)
 const balancesRefreshing = ref(false)
 const tree = ref<VaultTree | null>(null)
@@ -839,6 +903,47 @@ watch(entryMenuOpen, (open) => {
 								icon="i-lucide-key-round"
 							/>
 						</UFormField>
+					</div>
+					<div
+						v-if="gateTab === 'create'"
+						class="space-y-1.5"
+					>
+						<div class="flex items-center justify-between gap-2">
+							<span class="text-muted text-[11px]">Password strength</span>
+							<span
+								class="text-[11px] font-medium tabular-nums"
+								:class="
+									createPasswordStrength.level === 0
+										? 'text-muted'
+										: createPasswordStrengthLabelClass
+								"
+							>
+								{{
+									createPasswordStrength.level === 0
+										? '—'
+										: createPasswordStrength.label
+								}}
+							</span>
+						</div>
+						<div
+							class="flex h-1.5 gap-1"
+							role="meter"
+							:aria-valuenow="createPasswordStrength.level"
+							aria-valuemin="0"
+							aria-valuemax="4"
+							:aria-label="`Password strength: ${createPasswordStrength.label || 'empty'}`"
+						>
+							<div
+								v-for="seg in [1, 2, 3, 4]"
+								:key="seg"
+								:class="
+									createPasswordStrengthSegmentClass(
+										createPasswordStrength.level,
+										seg,
+									)
+								"
+							/>
+						</div>
 					</div>
 					<UFormField v-else label="Password">
 						<UInput

@@ -364,11 +364,7 @@ const settingsCardUi = {
 								}"
 							/>
 
-							<UFormField
-								size="sm"
-								label="Custom RPC URL"
-								:hint="`Empty = default (${defaultSolanaRpcUrl}).`"
-							>
+							<UFormField size="sm" label="Custom RPC URL">
 								<UInput
 									v-model="rpcDraft"
 									size="sm"
