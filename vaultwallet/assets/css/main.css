@@ -146,3 +146,32 @@ body::-webkit-scrollbar,
 	width: 0;
 	height: 0;
 }
+
+/*
+ * Wallet grid: vertical + horizontal scroll with visible themed scrollbars
+ * (overrides app-wide hidden scrollbars). Use overflow-auto, not UScrollArea
+ * here — Nuxt UI ScrollArea sets overflow-x-hidden and blocks sideways scroll.
+ */
+.vw-table-scroll.overflow-auto {
+	scrollbar-width: thin;
+	scrollbar-color: var(--ui-border-accented) var(--ui-bg-muted);
+}
+
+.vw-table-scroll.overflow-auto::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.vw-table-scroll.overflow-auto::-webkit-scrollbar-track {
+	background: var(--ui-bg-muted);
+	border-radius: 9999px;
+}
+
+.vw-table-scroll.overflow-auto::-webkit-scrollbar-thumb {
+	background: var(--ui-border-accented);
+	border-radius: 9999px;
+}
+
+.vw-table-scroll.overflow-auto::-webkit-scrollbar-thumb:hover {
+	background: var(--ui-text-dimmed);
+}

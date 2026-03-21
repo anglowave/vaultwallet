@@ -1287,14 +1287,16 @@ watch(entryMenuOpen, (open) => {
 						</UButton>
 					</div>
 
-					<UScrollArea class="min-h-0 flex-1 p-4">
-						<UCard v-if="selectedGroup" class="overflow-hidden">
+					<div
+						class="vw-table-scroll min-h-0 flex-1 overflow-auto overscroll-contain p-4"
+					>
+						<UCard v-if="selectedGroup" class="min-w-0">
 							<UTable
 								:data="entryTableRows"
 								:columns="entryTableColumns"
 								:loading="loading || balancesRefreshing"
 								empty="No wallets in this folder. Use Add wallet to create one."
-								class="w-full shrink-0"
+								class="w-full min-w-[44rem] shrink-0"
 								:get-row-id="entryRowId"
 								:on-contextmenu="onEntryRowContextmenu"
 							>
@@ -1343,7 +1345,7 @@ watch(entryMenuOpen, (open) => {
 								</template>
 							</UTable>
 						</UCard>
-					</UScrollArea>
+					</div>
 				</main>
 			</div>
 		</div>

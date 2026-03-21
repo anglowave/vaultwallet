@@ -1,4 +1,13 @@
 import type { WalletFundingPayload } from '~/types/funding'
+import { truncateMiddle } from '~/types/vault'
+
+/** Exchange name, or shortened funder address when not in the exchange directory. */
+function fundingSourceDisplayName(p: WalletFundingPayload): string {
+	if (p.exchange) return p.exchange
+	const s = p.sender.trim()
+	if (s) return truncateMiddle(s, 4)
+	return 'Unknown'
+}
 
 export function parseFundingField(raw: string): WalletFundingPayload | null {
 	const s = raw.trim()
@@ -54,13 +63,11 @@ export function fundingTableLabel(p: WalletFundingPayload): string {
 	const amt = p.amountSol.toFixed(4)
 	const ago = formatFundingTimeAgo(p.dateUtc)
 	const tail = ago ? ` · ${ago}` : ''
-	if (p.exchange) return `${p.exchange} · ${amt} SOL${tail}`
-	return `Unknown · ${amt} SOL${tail}`
+	return `${fundingSourceDisplayName(p)} · ${amt} SOL${tail}`
 }
 
 /** Exchange + amount only (no relative time) — for multi-line summaries. */
 export function fundingSummaryHeadline(p: WalletFundingPayload): string {
 	const amt = p.amountSol.toFixed(4)
-	if (p.exchange) return `${p.exchange} · ${amt} SOL`
-	return `Unknown · ${amt} SOL`
+	return `${fundingSourceDisplayName(p)} · ${amt} SOL`
 }
