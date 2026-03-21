@@ -15,6 +15,15 @@ export interface VaultTree {
 	root: VaultGroup
 }
 
+/** Passed to Tauri when creating a vault with advanced crypto options */
+export interface VaultCreateCrypto {
+	cipher: 'aes256cbc' | 'chacha20' | 'twofishcbc'
+	argon2Flavor: 'id' | 'd'
+	iterations: number
+	memoryMib: number
+	parallelism: number
+}
+
 /** Encrypted vault string fields for each Solana wallet entry */
 export const WALLET_FIELD_KEYS = [
 	'Title',

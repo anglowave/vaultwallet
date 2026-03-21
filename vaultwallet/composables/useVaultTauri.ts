@@ -1,13 +1,24 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { VaultGroup, VaultEntry, VaultTree } from '~/types/vault'
+import type {
+	VaultCreateCrypto,
+	VaultGroup,
+	VaultEntry,
+	VaultTree,
+} from '~/types/vault'
 
 export function useVaultTauri() {
 	async function vaultCreate(
 		path: string,
 		password: string,
 		kdfStrength: number,
+		crypto: VaultCreateCrypto | null,
 	) {
-		await invoke('vault_create', { path, password, kdfStrength })
+		await invoke('vault_create', {
+			path,
+			password,
+			kdfStrength,
+			crypto,
+		})
 	}
 
 	async function vaultOpen(path: string, password: string): Promise<VaultTree> {

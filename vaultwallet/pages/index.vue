@@ -32,9 +32,56 @@ const KDF_PRESETS = [
 	{ title: 'Maximum', detail: '~32 MB' },
 ] as const
 
+/** Matches `new_database` presets in `src-tauri/src/lib.rs` */
+const PRESET_KDF_PARAMS = [
+	{ memoryMib: 2, iterations: 4, parallelism: 1 },
+	{ memoryMib: 8, iterations: 7, parallelism: 2 },
+	{ memoryMib: 16, iterations: 10, parallelism: 2 },
+	{ memoryMib: 32, iterations: 14, parallelism: 2 },
+] as const
+
 const activeKdfPreset = computed(
 	() => KDF_PRESETS[createKdfStrength.value] ?? KDF_PRESETS[1],
 )
+
+const createAccordionValue = ref<string | undefined>(undefined)
+const createCipher = ref<'aes256cbc' | 'chacha20' | 'twofishcbc'>('aes256cbc')
+const createArgon2Flavor = ref<'id' | 'd'>('id')
+const createIterations = ref(7)
+const createMemoryMib = ref(8)
+const createParallelism = ref(2)
+
+const createCipherItems = [
+	{ label: 'AES-256-CBC', value: 'aes256cbc' as const },
+	{ label: 'ChaCha20', value: 'chacha20' as const },
+	{ label: 'Twofish-CBC', value: 'twofishcbc' as const },
+]
+
+const createArgon2FlavorItems = [
+	{ label: 'Argon2id (recommended)', value: 'id' as const },
+	{ label: 'Argon2d', value: 'd' as const },
+]
+
+function syncCreateParamsFromPresetSlider() {
+	const p =
+		PRESET_KDF_PARAMS[createKdfStrength.value] ?? PRESET_KDF_PARAMS[1]
+	createIterations.value = p.iterations
+	createMemoryMib.value = p.memoryMib
+	createParallelism.value = p.parallelism
+}
+
+watch(
+	createKdfStrength,
+	() => {
+		if (createAccordionValue.value === 'adv') return
+		syncCreateParamsFromPresetSlider()
+	},
+	{ immediate: true },
+)
+
+watch(createAccordionValue, (v) => {
+	if (v === 'adv') syncCreateParamsFromPresetSlider()
+})
 
 const loading = ref(false)
 const balancesRefreshing = ref(false)
@@ -277,10 +324,21 @@ async function handleCreateVault() {
 	}
 	loading.value = true
 	try {
+		const crypto =
+			createAccordionValue.value === 'adv'
+				? {
+						cipher: createCipher.value,
+						argon2Flavor: createArgon2Flavor.value,
+						iterations: createIterations.value,
+						memoryMib: createMemoryMib.value,
+						parallelism: createParallelism.value,
+					}
+				: null
 		await tauri.vaultCreate(
 			vaultPath.value.trim(),
 			password.value,
 			createKdfStrength.value,
+			crypto,
 		)
 		const t = await tauri.vaultOpen(vaultPath.value.trim(), password.value)
 		tree.value = t
@@ -378,6 +436,10 @@ function lockVault(reason: 'manual' | 'idle' = 'manual') {
 	phase.value = 'gate'
 	createPasswordConfirm.value = ''
 	createKdfStrength.value = 1
+	createAccordionValue.value = undefined
+	createCipher.value = 'aes256cbc'
+	createArgon2Flavor.value = 'id'
+	syncCreateParamsFromPresetSlider()
 	toast.add({
 		title:
 			reason === 'idle' ? 'Vault locked after inactivity' : 'Vault locked',
@@ -823,6 +885,103 @@ watch(entryMenuOpen, (open) => {
 						<p class="text-muted font-mono text-[10px] leading-tight">
 							{{ activeKdfPreset.title }} · {{ activeKdfPreset.detail }}
 						</p>
+					</div>
+
+					<div
+						v-if="gateTab === 'create'"
+						class="border-default overflow-hidden rounded-lg border"
+					>
+						<button
+							type="button"
+							class="hover:bg-elevated/40 flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+							:aria-expanded="createAccordionValue === 'adv'"
+							@click="
+								createAccordionValue =
+									createAccordionValue === 'adv' ? undefined : 'adv'
+							"
+						>
+							<span class="flex min-w-0 items-center gap-2.5">
+								<UIcon
+									name="i-lucide-cog"
+									class="text-muted size-4 shrink-0"
+								/>
+								<span class="text-highlighted text-sm font-medium leading-none">
+									Advanced
+								</span>
+							</span>
+							<UIcon
+								name="i-lucide-chevron-down"
+								class="text-muted size-4 shrink-0 transition-transform duration-200"
+								:class="
+									createAccordionValue === 'adv' ? '-rotate-180' : ''
+								"
+							/>
+						</button>
+						<div
+							v-show="createAccordionValue === 'adv'"
+							class="border-default border-t"
+						>
+							<div class="bg-muted/10 space-y-3 px-3 pb-3 pt-2.5">
+								<p class="text-muted text-[11px] leading-snug">
+									Overrides the quick preset. Argon2 is always used for
+									key derivation.
+								</p>
+								<UFormField label="Encryption" size="sm">
+									<USelect
+										v-model="createCipher"
+										:items="createCipherItems"
+										size="sm"
+										class="w-full"
+									/>
+								</UFormField>
+								<UFormField
+									size="sm"
+									label="Argon2 variant"
+									description="Argon2id resists side-channel leaks; Argon2d is faster."
+								>
+									<USelect
+										v-model="createArgon2Flavor"
+										:items="createArgon2FlavorItems"
+										size="sm"
+										class="w-full"
+									/>
+								</UFormField>
+								<UFormField
+									size="sm"
+									label="Transform rounds"
+									description="Argon2 time cost (iterations)."
+								>
+									<UInputNumber
+										v-model="createIterations"
+										size="sm"
+										:min="1"
+										:max="4096"
+										:step="1"
+										class="w-full"
+									/>
+								</UFormField>
+								<UFormField label="Memory (MiB)" size="sm">
+									<UInputNumber
+										v-model="createMemoryMib"
+										size="sm"
+										:min="1"
+										:max="2048"
+										:step="1"
+										class="w-full"
+									/>
+								</UFormField>
+								<UFormField label="Parallelism" size="sm">
+									<UInputNumber
+										v-model="createParallelism"
+										size="sm"
+										:min="1"
+										:max="64"
+										:step="1"
+										class="w-full"
+									/>
+								</UFormField>
+							</div>
+						</div>
 					</div>
 
 					<UButton

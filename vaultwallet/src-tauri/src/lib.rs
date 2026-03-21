@@ -1,7 +1,7 @@
 mod solana;
 
 use rand::RngCore;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use uuid::Uuid;
@@ -57,6 +57,51 @@ fn new_database(kdf_strength: u32) -> Database {
 		2 => (16_u64 * 1024 * 1024, 10_u32, 2_u32),
 		_ => (32_u64 * 1024 * 1024, 14_u32, 2_u32),
 	};
+	new_database_argon2(
+		CipherId::Aes256Cbc,
+		Argon2Flavor::Id,
+		iterations,
+		memory_bytes,
+		parallelism,
+		salt,
+	)
+}
+
+fn parse_cipher_id(s: &str) -> Result<CipherId, String> {
+	match s.trim().to_ascii_lowercase().as_str() {
+		"aes256cbc" | "aes-256-cbc" | "aes" => Ok(CipherId::Aes256Cbc),
+		"chacha20" => Ok(CipherId::ChaCha20),
+		"twofishcbc" | "twofish-cbc" | "twofish" => Ok(CipherId::TwofishCbc),
+		_ => Err(format!("unknown cipher: {s}")),
+	}
+}
+
+fn parse_argon2_flavor(s: &str) -> Result<Argon2Flavor, String> {
+	match s.trim().to_ascii_lowercase().as_str() {
+		"id" | "argon2id" => Ok(Argon2Flavor::Id),
+		"d" | "argon2d" => Ok(Argon2Flavor::D),
+		_ => Err(format!("unknown Argon2 variant: {s} (use id or d)")),
+	}
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VaultCreateCrypto {
+	cipher: String,
+	argon2_flavor: String,
+	iterations: u32,
+	memory_mib: u32,
+	parallelism: u32,
+}
+
+fn new_database_argon2(
+	cipher: CipherId,
+	flavor: Argon2Flavor,
+	iterations: u32,
+	memory_bytes: u64,
+	parallelism: u32,
+	salt: Vec<u8>,
+) -> Database {
 	let mut root = Group::new(Uuid::new_v4());
 	root.name = "Root".into();
 	Database {
@@ -67,10 +112,10 @@ fn new_database(kdf_strength: u32) -> Database {
 		settings: VaultSettings {
 			format_version_minor: 1,
 			format_version_major: 4,
-			cipher: CipherId::Aes256Cbc,
+			cipher,
 			compression_gzip: true,
 			kdf: KdfParams::Argon2 {
-				flavor: Argon2Flavor::Id,
+				flavor,
 				salt,
 				iterations,
 				memory_bytes,
@@ -79,6 +124,39 @@ fn new_database(kdf_strength: u32) -> Database {
 			},
 		},
 	}
+}
+
+/// Custom Argon2 + cipher for new vaults (advanced create).
+fn new_database_custom(c: VaultCreateCrypto) -> Result<Database, String> {
+	let cipher = parse_cipher_id(&c.cipher)?;
+	let flavor = parse_argon2_flavor(&c.argon2_flavor)?;
+	if !(1..=4096).contains(&c.iterations) {
+		return Err("transform rounds (iterations) must be between 1 and 4096".into());
+	}
+	if !(1..=2048).contains(&c.memory_mib) {
+		return Err("memory must be between 1 and 2048 MiB".into());
+	}
+	if !(1..=64).contains(&c.parallelism) {
+		return Err("parallelism must be between 1 and 64".into());
+	}
+	let memory_bytes = u64::from(c.memory_mib) * 1024 * 1024;
+	let mem_kib = memory_bytes / 1024;
+	if mem_kib < 8 {
+		return Err("Argon2 memory must be at least 8 KiB".into());
+	}
+	if mem_kib > u64::from(u32::MAX) {
+		return Err("Argon2 memory is too large".into());
+	}
+	let mut salt = vec![0u8; 32];
+	rand::thread_rng().fill_bytes(&mut salt);
+	Ok(new_database_argon2(
+		cipher,
+		flavor,
+		c.iterations,
+		memory_bytes,
+		c.parallelism,
+		salt,
+	))
 }
 
 fn normalize_wlvlt_path(path: &str) -> Result<std::path::PathBuf, String> {
@@ -141,13 +219,21 @@ fn remove_group_recursive(root: &mut Group, id: &Uuid) -> bool {
 }
 
 #[tauri::command]
-fn vault_create(path: String, password: String, kdf_strength: u32) -> Result<(), String> {
+fn vault_create(
+	path: String,
+	password: String,
+	kdf_strength: u32,
+	crypto: Option<VaultCreateCrypto>,
+) -> Result<(), String> {
 	let dest = normalize_wlvlt_path(&path)?;
 	if dest.exists() {
 		return Err(format!("file already exists: {}", dest.display()));
 	}
 	let key = composite_key(&password)?;
-	let db = new_database(kdf_strength);
+	let db = match crypto {
+		Some(c) => new_database_custom(c)?,
+		None => new_database(kdf_strength),
+	};
 	save(&db, &dest, key).map_err(wv_err)
 }
 
