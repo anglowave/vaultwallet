@@ -61,13 +61,15 @@ let createDeriveTimer: ReturnType<typeof setTimeout> | null = null
 let createDeriveSeq = 0
 
 
-const renameOpen = ref(false)
-const renameValue = ref('')
-const renameTargetId = ref<string | null>(null)
+const editingFolderId = ref<string | null>(null)
+const editingFolderName = ref('')
+const folderRenameBusy = ref(false)
 
 const deleteGroupModal = ref(false)
 const deleteEntryModal = ref(false)
 const deletePendingEntryId = ref<string | null>(null)
+
+const settingsModalOpen = ref(false)
 
 const selectedGroup = computed(() => {
 	if (!tree.value || !selectedGroupId.value) return null
@@ -365,10 +367,12 @@ function clearPrivateClipboardTimer() {
 
 function lockVault(reason: 'manual' | 'idle' = 'manual') {
 	clearPrivateClipboardTimer()
+	editingFolderId.value = null
 	tree.value = null
 	sessionPassword.value = ''
 	selectedGroupId.value = null
 	editModalOpen.value = false
+	settingsModalOpen.value = false
 	deletePendingEntryId.value = null
 	deleteEntryModal.value = false
 	phase.value = 'gate'
@@ -416,15 +420,14 @@ async function addSubgroup() {
 	}
 }
 
-function openRenameGroup(id: string, current: string) {
-	renameTargetId.value = id
-	renameValue.value = current
-	renameOpen.value = true
-}
-
 function onFolderContextRename(p: { id: string; name: string }) {
 	selectedGroupId.value = p.id
-	openRenameGroup(p.id, p.name)
+	editingFolderId.value = p.id
+	editingFolderName.value = p.name
+}
+
+function cancelFolderRename() {
+	editingFolderId.value = null
 }
 
 function onFolderContextDelete(id: string) {
@@ -432,23 +435,37 @@ function onFolderContextDelete(id: string) {
 	deleteGroupModal.value = true
 }
 
-async function submitRenameGroup() {
-	if (!renameTargetId.value) return
+async function commitFolderRename() {
+	if (folderRenameBusy.value) return
+	const id = editingFolderId.value
+	if (!id || !tree.value) return
+	const name = editingFolderName.value.trim() || 'Group'
+	const g = findGroup(tree.value.root, id)
+	if (!g) {
+		editingFolderId.value = null
+		return
+	}
+	if (g.name === name) {
+		editingFolderId.value = null
+		return
+	}
+	folderRenameBusy.value = true
 	loading.value = true
 	try {
 		await tauri.vaultRenameGroup(
 			vaultPath.value.trim(),
 			sessionPassword.value,
-			renameTargetId.value,
-			renameValue.value.trim() || 'Group',
+			id,
+			name,
 		)
-		renameOpen.value = false
+		editingFolderId.value = null
 		await reloadTree()
 		toast.add({ title: 'Folder renamed', color: 'success' })
 	} catch (e) {
 		showError(e)
 	} finally {
 		loading.value = false
+		folderRenameBusy.value = false
 	}
 }
 
@@ -699,6 +716,8 @@ watch(entryMenuOpen, (open) => {
 
 <template>
 	<div class="bg-default flex h-full min-h-0 flex-col overflow-hidden">
+		<VaultSettingsModal v-model:open="settingsModalOpen" />
+
 		<!-- Gate: open / create -->
 		<div
 			v-if="phase === 'gate'"
@@ -827,11 +846,11 @@ watch(entryMenuOpen, (open) => {
 
 					<div class="flex justify-center pt-1">
 						<UButton
-							to="/settings"
 							variant="link"
 							color="neutral"
 							size="sm"
 							icon="i-lucide-settings"
+							@click="settingsModalOpen = true"
 						>
 							Settings
 						</UButton>
@@ -865,11 +884,11 @@ watch(entryMenuOpen, (open) => {
 				<template #right>
 					<div class="flex items-center gap-2">
 						<UButton
-							to="/settings"
 							color="neutral"
 							variant="ghost"
 							icon="i-lucide-settings"
 							aria-label="Settings"
+							@click="settingsModalOpen = true"
 						/>
 						<UButton
 							color="neutral"
@@ -911,9 +930,15 @@ watch(entryMenuOpen, (open) => {
 							:root-id="tree.root.id"
 							:selected-group-id="selectedGroupId"
 							:depth="0"
+							:editing-folder-id="editingFolderId"
+							:editing-folder-name="editingFolderName"
+							:loading="loading"
 							@select="selectedGroupId = $event"
 							@context-rename="onFolderContextRename"
 							@context-delete="onFolderContextDelete"
+							@update:editing-folder-name="editingFolderName = $event"
+							@rename-commit="commitFolderRename"
+							@rename-cancel="cancelFolderRename"
 						/>
 					</UScrollArea>
 				</aside>
@@ -1112,27 +1137,6 @@ watch(entryMenuOpen, (open) => {
 						Save
 					</UButton>
 				</div>
-			</template>
-		</UModal>
-
-		<UModal v-model:open="renameOpen">
-			<template #content>
-				<UCard>
-					<template #header>
-						<h3 class="text-highlighted font-semibold">Rename folder</h3>
-					</template>
-					<UFormField label="Name">
-						<UInput v-model="renameValue" autofocus @keydown.enter="submitRenameGroup" />
-					</UFormField>
-					<template #footer>
-						<div class="flex justify-end gap-2">
-							<UButton color="neutral" variant="ghost" @click="renameOpen = false">
-								Cancel
-							</UButton>
-							<UButton :loading="loading" @click="submitRenameGroup">Save</UButton>
-						</div>
-					</template>
-				</UCard>
 			</template>
 		</UModal>
 

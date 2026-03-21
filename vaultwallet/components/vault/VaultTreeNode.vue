@@ -6,17 +6,28 @@ const props = defineProps<{
 	selectedGroupId: string | null
 	depth: number
 	rootId: string
+	editingFolderId: string | null
+	editingFolderName: string
+	loading?: boolean
 }>()
 
 const emit = defineEmits<{
 	select: [id: string]
 	contextRename: [payload: { id: string; name: string }]
 	contextDelete: [id: string]
+	'update:editingFolderName': [value: string]
+	renameCommit: []
+	renameCancel: []
 }>()
 
 const open = ref(true)
 
 const isRootFolder = computed(() => props.node.id === props.rootId)
+
+const isEditing = computed(
+	() =>
+		props.editingFolderId !== null && props.editingFolderId === props.node.id,
+)
 
 const folderMenuItems = computed(() => [
 	[
@@ -60,7 +71,22 @@ const folderMenuItems = computed(() => [
 					@click.stop="open = !open"
 				/>
 				<span v-else class="inline-block w-7 shrink-0" />
+				<UInput
+					v-if="isEditing"
+					:model-value="editingFolderName"
+					:disabled="loading"
+					color="neutral"
+					variant="outline"
+					size="sm"
+					class="min-w-0 flex-1 font-medium"
+					autofocus
+					@update:model-value="emit('update:editingFolderName', $event)"
+					@keydown.enter.prevent="emit('renameCommit')"
+					@keydown.esc.prevent="emit('renameCancel')"
+					@blur="emit('renameCommit')"
+				/>
 				<UButton
+					v-else
 					:color="selectedGroupId === node.id ? 'primary' : 'neutral'"
 					variant="ghost"
 					size="sm"
@@ -80,9 +106,15 @@ const folderMenuItems = computed(() => [
 				:root-id="rootId"
 				:selected-group-id="selectedGroupId"
 				:depth="depth + 1"
+				:editing-folder-id="editingFolderId"
+				:editing-folder-name="editingFolderName"
+				:loading="loading"
 				@select="emit('select', $event)"
 				@context-rename="emit('contextRename', $event)"
 				@context-delete="emit('contextDelete', $event)"
+				@update:editing-folder-name="emit('update:editingFolderName', $event)"
+				@rename-commit="emit('renameCommit')"
+				@rename-cancel="emit('renameCancel')"
 			/>
 		</div>
 	</div>

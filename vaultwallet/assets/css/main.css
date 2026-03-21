@@ -94,7 +94,7 @@ html:not(.dark) :is(button, a).bg-primary:active {
 	background-color: #000000 !important;
 }
 
-/* Custom accent (set from Settings): use generated primary-600 on hover */
+/* Custom accent: use generated primary-600 on solid primary hover */
 html[data-vw-accent-custom].dark :is(button, a).bg-primary:hover,
 html[data-vw-accent-custom].dark :is(button, a).bg-primary:active {
 	background-color: var(--ui-color-primary-600) !important;
