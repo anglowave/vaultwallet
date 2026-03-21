@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "VaultWallet",
-        "width": 950,
+        "width": 1100,
         "height": 600,
         "decorations": false,
         "resizable": true,

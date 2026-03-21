@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * macOS-style traffic lights + drag region for frameless Tauri windows.
+ * Frameless Tauri title bar: drag region + window controls on the trailing edge.
  */
 const isTauri = computed(
 	() => import.meta.client && '__TAURI_INTERNALS__' in window,
@@ -53,28 +53,23 @@ async function onTitleBarDblClick() {
 		v-if="isTauri"
 		class="titlebar border-default bg-elevated/90 flex h-11 shrink-0 cursor-default items-stretch border-b backdrop-blur-md"
 	>
+		<!-- Match width of `.traffic-lights` so the title stays visually centered -->
+		<div class="w-[96px] shrink-0" aria-hidden="true" />
+
 		<div
-			class="traffic-lights flex items-center gap-2 pl-3 pr-2"
+			data-tauri-drag-region
+			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-center gap-2 py-2 text-sm font-medium select-none"
+			@dblclick="onTitleBarDblClick"
+		>
+			<UIcon name="i-lucide-shield" class="text-primary size-4 shrink-0 opacity-90" />
+			<span class="text-highlighted truncate">VaultWallet</span>
+		</div>
+
+		<div
+			class="traffic-lights flex items-center gap-3 pl-3 pr-6"
 			role="toolbar"
 			aria-label="Window"
 		>
-			<button
-				type="button"
-				class="traffic traffic--close"
-				aria-label="Close window"
-				@mousedown.stop
-				@click="onClose"
-			>
-				<svg class="traffic__glyph" viewBox="0 0 10 10" aria-hidden="true">
-					<path
-						d="M2.5 2.5 L7.5 7.5 M7.5 2.5 L2.5 7.5"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.2"
-						stroke-linecap="round"
-					/>
-				</svg>
-			</button>
 			<button
 				type="button"
 				class="traffic traffic--minimize"
@@ -109,19 +104,24 @@ async function onTitleBarDblClick() {
 					/>
 				</svg>
 			</button>
+			<button
+				type="button"
+				class="traffic traffic--close"
+				aria-label="Close window"
+				@mousedown.stop
+				@click="onClose"
+			>
+				<svg class="traffic__glyph" viewBox="0 0 10 10" aria-hidden="true">
+					<path
+						d="M2.5 2.5 L7.5 7.5 M7.5 2.5 L2.5 7.5"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.2"
+						stroke-linecap="round"
+					/>
+				</svg>
+			</button>
 		</div>
-
-		<div
-			data-tauri-drag-region
-			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-center gap-2 py-2 text-sm font-medium select-none"
-			@dblclick="onTitleBarDblClick"
-		>
-			<UIcon name="i-lucide-shield" class="text-primary size-4 shrink-0 opacity-90" />
-			<span class="text-highlighted truncate">VaultWallet</span>
-		</div>
-
-		<!-- Balance traffic lights on the left (macOS layout) -->
-		<div class="w-[88px] shrink-0" aria-hidden="true" />
 	</header>
 </template>
 
