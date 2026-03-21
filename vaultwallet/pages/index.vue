@@ -953,45 +953,36 @@ async function confirmDeleteEntry() {
 			</template>
 		</UModal>
 
-		<UModal v-model:open="editModalOpen">
-			<template #content>
-				<UCard class="w-full max-w-md">
-					<template #header>
-						<div>
-							<h3 class="text-highlighted text-lg font-semibold">Rename wallet</h3>
-							<p class="text-muted mt-1 text-sm">
-								Only the display name can be changed. Keys, balance, and funding
-								stay as stored in the vault.
-							</p>
-						</div>
-					</template>
-
-					<UFormField label="Name" required>
-						<UInput
-							v-model="editEntryTitle"
-							class="w-full"
-							placeholder="My trading wallet"
-							autofocus
-							@keydown.enter="saveEntry"
-						/>
-					</UFormField>
-
-					<template #footer>
-						<div class="flex w-full flex-wrap justify-end gap-2">
-							<UButton color="neutral" variant="ghost" @click="closeEditModal">
-								Cancel
-							</UButton>
-							<UButton
-								:disabled="!editTitleDirty || loading"
-								:loading="loading"
-								icon="i-lucide-save"
-								@click="saveEntry"
-							>
-								Save
-							</UButton>
-						</div>
-					</template>
-				</UCard>
+		<UModal
+			v-model:open="editModalOpen"
+			title="Rename wallet"
+			description="Only the display name can be changed. Keys, balance, and funding stay as stored in the vault."
+		>
+			<template #body>
+				<UFormField label="Name" required>
+					<UInput
+						v-model="editEntryTitle"
+						class="w-full"
+						placeholder="My trading wallet"
+						autofocus
+						@keydown.enter="saveEntry"
+					/>
+				</UFormField>
+			</template>
+			<template #footer>
+				<div class="flex w-full flex-wrap justify-end gap-2">
+					<UButton color="neutral" variant="ghost" @click="closeEditModal">
+						Cancel
+					</UButton>
+					<UButton
+						:disabled="!editTitleDirty || loading"
+						:loading="loading"
+						icon="i-lucide-save"
+						@click="saveEntry"
+					>
+						Save
+					</UButton>
+				</div>
 			</template>
 		</UModal>
 
