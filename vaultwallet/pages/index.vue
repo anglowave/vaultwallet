@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import {
-	WALLET_FIELD_KEYS,
 	entryDisplayName,
 	findGroup,
 	truncateMiddle,
-	type VaultEntry,
 	type VaultTree,
 } from '~/types/vault'
-import {
-	formatFundingTimeAgo,
-	fundingSummaryHeadline,
-	fundingTableLabel,
-	parseFundingField,
-} from '~/utils/fundingPayload'
+import { fundingTableLabel, parseFundingField } from '~/utils/fundingPayload'
 
 const toast = useToast()
 const tauri = useVaultTauri()
@@ -51,11 +44,14 @@ const tree = ref<VaultTree | null>(null)
 const selectedGroupId = ref<string | null>(null)
 let folderBalanceSeq = 0
 
-const draftFields = ref<Record<string, string>>({})
-const dirty = ref(false)
-
 const editModalOpen = ref(false)
 const editEntryId = ref<string | null>(null)
+const editEntryTitle = ref('')
+const editOriginalTitle = ref('')
+
+const editTitleDirty = computed(
+	() => editEntryTitle.value.trim() !== editOriginalTitle.value.trim(),
+)
 
 const createWalletOpen = ref(false)
 const createWalletName = ref('')
@@ -66,8 +62,6 @@ const createDerivedPublicKey = ref('')
 let createDeriveTimer: ReturnType<typeof setTimeout> | null = null
 let createDeriveSeq = 0
 
-const editDerivedPublicKey = ref('')
-let editPubSeq = 0
 
 const renameOpen = ref(false)
 const renameValue = ref('')
@@ -127,47 +121,13 @@ const deletePendingTitle = computed(() => {
 	return e ? entryDisplayName(e) : ''
 })
 
-const extraFieldKeys = computed(() => {
-	const keys = new Set(Object.keys(draftFields.value))
-	for (const k of WALLET_FIELD_KEYS) keys.delete(k)
-	return [...keys].sort()
-})
-
-const editFundingSummary = computed(() => {
-	const raw = draftFields.value.Funding?.trim() || ''
-	const p = parseFundingField(raw)
-	if (!p) return raw || '—'
-	const whenLine = p.dateUtc
-		? (() => {
-				const ago = formatFundingTimeAgo(p.dateUtc)
-				return ago
-					? `When: ${ago} · ${p.dateUtc}`
-					: `When: ${p.dateUtc}`
-			})()
-		: null
-	const lines = [
-		fundingSummaryHeadline(p),
-		whenLine,
-		`Sender: ${truncateMiddle(p.sender, 5)}`,
-		`Tx: ${truncateMiddle(p.signature, 8)}`,
-	].filter(Boolean) as string[]
-	return lines.join('\n')
-})
-
-function initDraftFromEntry(e: VaultEntry) {
-	const o: Record<string, string> = { ...e.fields }
-	for (const k of WALLET_FIELD_KEYS) {
-		if (o[k] === undefined) o[k] = ''
-	}
-	draftFields.value = o
-	dirty.value = false
-}
-
 function openEditEntry(entryId: string) {
 	const ent = groupEntries.value.find((e) => e.id === entryId)
 	if (!ent) return
 	editEntryId.value = entryId
-	initDraftFromEntry(ent)
+	const t = ent.fields.Title ?? ''
+	editEntryTitle.value = t
+	editOriginalTitle.value = t
 	editModalOpen.value = true
 }
 
@@ -191,36 +151,11 @@ function closeEditModal() {
 
 watch(editModalOpen, (open) => {
 	if (!open) {
-		editPubSeq++
 		editEntryId.value = null
-		draftFields.value = {}
-		dirty.value = false
-		editDerivedPublicKey.value = ''
+		editEntryTitle.value = ''
+		editOriginalTitle.value = ''
 	}
 })
-
-watch(
-	() => [editModalOpen.value, draftFields.value.PrivateKey] as const,
-	async ([open, sk]) => {
-		if (!open) return
-		editPubSeq++
-		const runId = editPubSeq
-		const s = (sk ?? '').trim()
-		if (!s) {
-			editDerivedPublicKey.value = ''
-			return
-		}
-		try {
-			const pub = await tauri.solanaPublicKeyFromPrivate(s)
-			if (runId !== editPubSeq) return
-			editDerivedPublicKey.value = pub
-		} catch {
-			if (runId !== editPubSeq) return
-			editDerivedPublicKey.value = ''
-		}
-	},
-	{ immediate: true },
-)
 
 watch(createWalletOpen, (open) => {
 	if (!open) {
@@ -586,35 +521,16 @@ async function saveEntry() {
 	const g = selectedGroup.value
 	const id = editEntryId.value
 	if (!g || !id) return
-	const secret = draftFields.value.PrivateKey?.trim() || ''
-	if (!secret) {
-		toast.add({ title: 'Private key is required', color: 'warning' })
-		return
-	}
-	let pub: string
-	try {
-		pub = await tauri.solanaPublicKeyFromPrivate(secret)
-	} catch {
-		toast.add({
-			title: 'Invalid private key',
-			description: 'Use base58 or a 64-number JSON array.',
-			color: 'warning',
-		})
+	const ent = groupEntries.value.find((e) => e.id === id)
+	if (!ent) return
+	const name = editEntryTitle.value.trim()
+	if (!name) {
+		toast.add({ title: 'Name is required', color: 'warning' })
 		return
 	}
 	loading.value = true
 	try {
-		let balance = draftFields.value.Balance?.trim() || ''
-		try {
-			balance = await tauri.solanaFetchBalance(solRpcUrl(), pub)
-		} catch {
-			if (!balance) balance = 'Unavailable'
-		}
-		const fields: Record<string, string> = {
-			...draftFields.value,
-			PublicKey: pub,
-			Balance: balance,
-		}
+		const fields = { ...ent.fields, Title: name }
 		await tauri.vaultUpdateEntry(
 			vaultPath.value.trim(),
 			sessionPassword.value,
@@ -622,55 +538,11 @@ async function saveEntry() {
 			id,
 			fields,
 		)
-		dirty.value = false
 		await reloadTree()
 		toast.add({ title: 'Saved', color: 'success' })
 		closeEditModal()
 	} catch (err) {
 		showError(err)
-	} finally {
-		loading.value = false
-	}
-}
-
-async function refreshEditBalance() {
-	const pub = editDerivedPublicKey.value
-	if (!pub) {
-		toast.add({ title: 'Enter a valid private key first', color: 'warning' })
-		return
-	}
-	loading.value = true
-	try {
-		draftFields.value.Balance = await tauri.solanaFetchBalance(solRpcUrl(), pub)
-		markDirty()
-	} catch (e) {
-		showError(e)
-	} finally {
-		loading.value = false
-	}
-}
-
-async function refreshEditFunding() {
-	const pub = editDerivedPublicKey.value
-	if (!pub) {
-		toast.add({ title: 'Enter a valid private key first', color: 'warning' })
-		return
-	}
-	loading.value = true
-	try {
-		const trace = await tauri.solanaTraceFunding(solRpcUrl(), pub)
-		draftFields.value.Funding = trace ?? ''
-		markDirty()
-		if (!trace) {
-			toast.add({
-				title: 'No inbound funding found',
-				description:
-					'No system transfer ≥ 0.01 SOL matched, or history cap reached.',
-				color: 'neutral',
-			})
-		}
-	} catch (e) {
-		showError(e)
 	} finally {
 		loading.value = false
 	}
@@ -700,30 +572,6 @@ async function confirmDeleteEntry() {
 	}
 }
 
-function markDirty() {
-	dirty.value = true
-}
-
-function addCustomField() {
-	const key = `Field${Object.keys(draftFields.value).length + 1}`
-	draftFields.value = { ...draftFields.value, [key]: '' }
-	markDirty()
-}
-
-function removeField(key: string) {
-	const next = { ...draftFields.value }
-	delete next[key]
-	draftFields.value = next
-	markDirty()
-}
-
-const walletFieldLabels: Record<string, string> = {
-	Title: 'Name',
-	PublicKey: 'Public key',
-	PrivateKey: 'Private key',
-	Balance: 'Balance',
-	Funding: 'Wallet funding',
-}
 </script>
 
 <template>
@@ -1007,7 +855,7 @@ const walletFieldLabels: Record<string, string> = {
 											variant="ghost"
 											size="xs"
 											icon="i-lucide-pencil"
-											aria-label="Edit wallet"
+											aria-label="Rename wallet"
 											@click.stop="openEditEntry(row.original.id)"
 										/>
 										<UButton
@@ -1107,128 +955,26 @@ const walletFieldLabels: Record<string, string> = {
 
 		<UModal v-model:open="editModalOpen">
 			<template #content>
-				<UCard class="max-h-[min(90vh,760px)] w-full max-w-lg">
+				<UCard class="w-full max-w-md">
 					<template #header>
 						<div>
-							<h3 class="text-highlighted text-lg font-semibold">Edit wallet</h3>
+							<h3 class="text-highlighted text-lg font-semibold">Rename wallet</h3>
 							<p class="text-muted mt-1 text-sm">
-								Values are encrypted when you save to the vault file.
+								Only the display name can be changed. Keys, balance, and funding
+								stay as stored in the vault.
 							</p>
 						</div>
 					</template>
 
-					<div class="max-h-[min(58vh,480px)] space-y-4 overflow-y-auto">
-						<UFormField :label="walletFieldLabels.Title">
-							<UInput
-								v-model="draftFields.Title"
-								class="w-full"
-								@update:model-value="markDirty"
-							/>
-						</UFormField>
-						<UFormField
-							:label="walletFieldLabels.PrivateKey"
-							hint="Changing this updates the derived public key on save"
-						>
-							<UInput
-								v-model="draftFields.PrivateKey"
-								type="password"
-								class="w-full font-mono text-sm"
-								autocomplete="off"
-								@update:model-value="markDirty"
-							/>
-						</UFormField>
-						<UFormField :label="walletFieldLabels.PublicKey">
-							<UInput
-								:model-value="editDerivedPublicKey || '—'"
-								readonly
-								disabled
-								class="w-full font-mono text-sm"
-							/>
-						</UFormField>
-						<UFormField :label="walletFieldLabels.Balance">
-							<div class="flex gap-2">
-								<div
-									class="border-default bg-muted/30 flex min-w-0 flex-1 items-center rounded-md border px-3 py-2"
-								>
-									<span class="font-mono text-sm tabular-nums">{{
-										draftFields.Balance || '—'
-									}}</span>
-								</div>
-								<UButton
-									color="neutral"
-									variant="soft"
-									icon="i-lucide-refresh-cw"
-									:loading="loading"
-									@click="refreshEditBalance"
-								>
-									Refresh
-								</UButton>
-							</div>
-						</UFormField>
-						<UFormField
-							:label="walletFieldLabels.Funding"
-							hint="First inbound SOL ≥ 0.01 from known exchange deposit addresses"
-						>
-							<div class="flex gap-2">
-								<UTextarea
-									:model-value="editFundingSummary"
-									readonly
-									autoresize
-									:rows="4"
-									class="min-w-0 flex-1 font-mono text-xs"
-								/>
-								<UButton
-									color="neutral"
-									variant="soft"
-									icon="i-lucide-scan-search"
-									:loading="loading"
-									class="self-start"
-									@click="refreshEditFunding"
-								>
-									Scan
-								</UButton>
-							</div>
-						</UFormField>
-
-						<div v-if="extraFieldKeys.length" class="border-default border-t pt-4">
-							<p class="text-muted mb-3 text-xs font-medium uppercase tracking-wide">
-								Custom fields
-							</p>
-							<div
-								v-for="k in extraFieldKeys"
-								:key="k"
-								class="mb-3 flex gap-2"
-							>
-								<UInput
-									:model-value="k"
-									class="w-36 shrink-0 font-mono text-xs"
-									readonly
-									disabled
-								/>
-								<UInput
-									v-model="draftFields[k]"
-									class="min-w-0 flex-1"
-									@update:model-value="markDirty"
-								/>
-								<UButton
-									color="neutral"
-									variant="ghost"
-									icon="i-lucide-x"
-									@click="removeField(k)"
-								/>
-							</div>
-						</div>
-
-						<UButton
-							color="neutral"
-							variant="outline"
-							size="sm"
-							icon="i-lucide-plus"
-							@click="addCustomField"
-						>
-							Add custom field
-						</UButton>
-					</div>
+					<UFormField label="Name" required>
+						<UInput
+							v-model="editEntryTitle"
+							class="w-full"
+							placeholder="My trading wallet"
+							autofocus
+							@keydown.enter="saveEntry"
+						/>
+					</UFormField>
 
 					<template #footer>
 						<div class="flex w-full flex-wrap justify-end gap-2">
@@ -1236,7 +982,7 @@ const walletFieldLabels: Record<string, string> = {
 								Cancel
 							</UButton>
 							<UButton
-								:disabled="!dirty || loading"
+								:disabled="!editTitleDirty || loading"
 								:loading="loading"
 								icon="i-lucide-save"
 								@click="saveEntry"
