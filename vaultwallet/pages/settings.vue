@@ -54,11 +54,17 @@ watch(
 
 const effectiveRpc = computed(() => solRpcUrl())
 
-const lockSec = computed({
-	get: () => lockAfterInactiveSeconds.value,
-	set: (v: number | null | undefined) => {
-		const n = typeof v === 'number' && Number.isFinite(v) ? v : 0
-		setLockAfterInactiveSeconds(n)
+/** UI in whole minutes; storage remains seconds for idle lock */
+const lockMin = computed({
+	get() {
+		const s = lockAfterInactiveSeconds.value
+		if (s <= 0) return 0
+		return Math.round(s / 60)
+	},
+	set(v: number | null | undefined) {
+		const m =
+			typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0
+		setLockAfterInactiveSeconds(m * 60)
 	},
 })
 
@@ -151,201 +157,267 @@ function resetAccent() {
 		color: 'neutral',
 	})
 }
+
+/** Cards fill the panel width; padding matches Nuxt UI defaults more closely */
+const settingsCardUi = {
+	root: 'w-full',
+	header: 'px-4 py-3 sm:px-5',
+	body: 'space-y-3 px-4 py-4 sm:px-5 sm:py-4',
+}
 </script>
 
 <template>
 	<div class="bg-default flex min-h-0 flex-1 flex-col overflow-hidden">
-		<UHeader class="border-b border-default" :toggle="false">
+		<UHeader
+			class="border-b border-default min-h-11 shrink-0 py-1.5"
+			:toggle="false"
+			:ui="{
+				container: 'max-w-none mx-0 w-full justify-between gap-3 px-3 sm:px-4',
+				left: 'min-w-0 flex-1 justify-start',
+				center: 'hidden',
+				right: 'shrink-0 justify-end',
+			}"
+		>
 			<template #left>
-				<UButton
-					to="/"
-					color="neutral"
-					variant="ghost"
-					icon="i-lucide-arrow-left"
-				>
-					Back
-				</UButton>
+				<div class="flex min-w-0 items-center gap-2">
+					<UButton
+						to="/"
+						color="neutral"
+						variant="ghost"
+						size="sm"
+						icon="i-lucide-arrow-left"
+					>
+						Back
+					</UButton>
+					<span class="text-highlighted truncate text-sm font-semibold">
+						Settings
+					</span>
+				</div>
 			</template>
 
-			<span class="text-highlighted truncate font-semibold">Settings</span>
-
 			<template #right>
-				<UColorModeButton />
+				<UColorModeButton size="sm" />
 			</template>
 		</UHeader>
 
 		<div class="flex min-h-0 flex-1">
 			<aside
-				class="border-default bg-muted/10 flex w-56 shrink-0 flex-col border-r"
+				class="border-default flex w-52 shrink-0 flex-col border-r bg-default"
 			>
-				<p class="text-muted px-3 py-3 text-xs font-medium uppercase tracking-wide">
-					Menu
-				</p>
-				<nav class="flex flex-col gap-0.5 p-2 pt-0">
-					<UButton
+				<nav
+					class="flex flex-col py-2"
+					role="tablist"
+					aria-label="Settings sections"
+				>
+					<button
 						v-for="item in sidebarNav"
 						:key="item.id"
-						block
-						:color="section === item.id ? 'primary' : 'neutral'"
-						:variant="section === item.id ? 'soft' : 'ghost'"
-						class="justify-start gap-2"
+						type="button"
+						role="tab"
+						:aria-selected="section === item.id"
+						:class="[
+							'relative flex w-full items-center gap-2.5 rounded-none py-2 pl-3 pr-2 text-left text-sm transition-colors',
+							section === item.id
+								? 'text-highlighted bg-elevated/60 font-medium before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-primary'
+								: 'text-muted hover:bg-elevated/35 hover:text-default',
+						]"
 						@click="section = item.id"
 					>
-						<UIcon :name="item.icon" class="size-4 shrink-0" />
-						<span class="truncate">{{ item.label }}</span>
-					</UButton>
+						<UIcon
+							:name="item.icon"
+							class="size-4 shrink-0 opacity-80"
+							:class="section === item.id ? 'text-primary' : ''"
+						/>
+						<span class="min-w-0 truncate">{{ item.label }}</span>
+					</button>
 				</nav>
 			</aside>
 
 			<UScrollArea class="min-h-0 min-w-0 flex-1">
-				<div class="mx-auto max-w-2xl p-6 pb-12">
-					<UPageHeader
-						class="mb-8"
-						:title="
-							section === 'general'
-								? 'General'
-								: section === 'appearance'
-									? 'Appearance'
-									: 'Network'
-						"
-						:description="
-							section === 'general'
-								? 'Security timers and clipboard behavior.'
-								: section === 'appearance'
-									? 'Theme and primary accent color.'
-									: 'Solana RPC endpoint for balances and traces.'
-						"
-					/>
+				<div
+					class="flex w-full max-w-none flex-col px-3 py-2 pb-8 text-left sm:px-5 sm:pr-6"
+				>
+					<header class="mb-4 max-w-md space-y-0.5 text-left">
+						<h1 class="text-highlighted text-sm font-semibold tracking-tight">
+							{{
+								section === 'general'
+									? 'General'
+									: section === 'appearance'
+										? 'Appearance'
+										: 'Network'
+							}}
+						</h1>
+						<p class="text-muted max-w-md text-xs leading-snug">
+							{{
+								section === 'general'
+									? 'Timers and clipboard.'
+									: section === 'appearance'
+										? 'Theme and accent.'
+										: 'RPC for balances and traces.'
+							}}
+						</p>
+					</header>
 
-					<div v-show="section === 'general'" class="space-y-6">
-						<UCard>
+					<div
+						v-show="section === 'general'"
+						class="flex w-full max-w-md flex-col gap-4 text-left"
+					>
+						<UCard :ui="settingsCardUi">
 							<template #header>
-								<h2 class="text-highlighted text-base font-semibold">
+								<h2 class="text-highlighted text-sm font-semibold">
 									Auto-lock
 								</h2>
 							</template>
 							<UFormField
+								size="sm"
 								label="Lock after inactivity"
-								description="0 = never lock automatically while the vault is open."
+								description="Whole minutes of no input. 0 = never while the vault is open."
 							>
-								<div class="flex flex-wrap items-center gap-3">
+								<div class="flex flex-wrap items-center gap-2">
 									<UInputNumber
-										v-model="lockSec"
+										v-model="lockMin"
+										size="sm"
 										:min="0"
-										:max="86400"
-										:step="30"
-										class="w-40"
+										:max="1440"
+										:step="1"
+										class="w-32"
 									/>
-									<span class="text-muted text-sm">seconds</span>
+									<span class="text-muted text-xs">min</span>
 								</div>
 							</UFormField>
 						</UCard>
 
-						<UCard>
+						<UCard :ui="settingsCardUi">
 							<template #header>
-								<h2 class="text-highlighted text-base font-semibold">
+								<h2 class="text-highlighted text-sm font-semibold">
 									Clipboard
 								</h2>
 							</template>
 							<UFormField
+								size="sm"
 								label="Clear private key from clipboard"
-								description="After copying a private key from the wallet table, clear the clipboard after this delay. 0 = do not clear. Public key copies are not cleared."
+								description="Delay after table copy. 0 = off. Public keys unchanged."
 							>
-								<div class="flex flex-wrap items-center gap-3">
+								<div class="flex flex-wrap items-center gap-2">
 									<UInputNumber
 										v-model="clipSec"
+										size="sm"
 										:min="0"
 										:max="3600"
 										:step="5"
-										class="w-40"
+										class="w-32"
 									/>
-									<span class="text-muted text-sm">seconds</span>
+									<span class="text-muted text-xs">sec</span>
 								</div>
 							</UFormField>
 						</UCard>
 					</div>
 
-					<div v-show="section === 'appearance'" class="space-y-6">
-						<UCard>
+					<div
+						v-show="section === 'appearance'"
+						class="flex w-full max-w-md flex-col gap-4 text-left"
+					>
+						<UCard :ui="settingsCardUi">
 							<template #header>
-								<h2 class="text-highlighted text-base font-semibold">
+								<h2 class="text-highlighted text-sm font-semibold">
 									Theme
 								</h2>
 							</template>
 							<UFormField
+								size="sm"
 								label="Color mode"
 								description="System, light, or dark."
 							>
-								<UColorModeSelect class="w-full max-w-xs" />
+								<UColorModeSelect
+									size="sm"
+									class="w-full max-w-sm"
+								/>
 							</UFormField>
 						</UCard>
 
-						<UCard>
+						<UCard :ui="settingsCardUi">
 							<template #header>
-								<h2 class="text-highlighted text-base font-semibold">
+								<h2 class="text-highlighted text-sm font-semibold">
 									Accent color
 								</h2>
 							</template>
-							<div class="space-y-4">
-								<p class="text-muted text-sm leading-relaxed">
-									Adjust the picker to preview; save when you are happy.
-									Reset restores the default black / white primary style.
+							<div class="space-y-3">
+								<p class="text-muted text-xs leading-snug">
+									Preview in the picker; save to keep. Reset restores default
+									primary.
 								</p>
 								<UColorPicker
 									v-model="pickAccent"
 									format="hex"
-									class="max-w-sm"
+									size="sm"
+									class="w-full max-w-sm"
 								/>
-								<div class="flex flex-wrap gap-2">
-									<UButton icon="i-lucide-check" @click="applyAccent">
+								<div class="flex flex-wrap justify-start gap-1.5">
+									<UButton
+										size="xs"
+										icon="i-lucide-check"
+										@click="applyAccent"
+									>
 										Save accent
 									</UButton>
 									<UButton
+										size="xs"
 										color="neutral"
 										variant="soft"
 										icon="i-lucide-rotate-ccw"
 										:disabled="!accentColorHex.trim()"
 										@click="resetAccent"
 									>
-										Use default accent
+										Default accent
 									</UButton>
 								</div>
 							</div>
 						</UCard>
 					</div>
 
-					<div v-show="section === 'network'" class="space-y-6">
-						<UCard>
+					<div
+						v-show="section === 'network'"
+						class="flex w-full max-w-md flex-col gap-4 text-left"
+					>
+						<UCard :ui="settingsCardUi">
 							<template #header>
-								<h2 class="text-highlighted text-base font-semibold">
+								<h2 class="text-highlighted text-sm font-semibold">
 									Solana RPC
 								</h2>
 							</template>
 
-							<div class="space-y-4">
+							<div class="space-y-3">
 								<UAlert
 									color="neutral"
 									variant="subtle"
+									class="text-xs"
 									icon="i-lucide-info"
 									title="Effective RPC"
 									:description="effectiveRpc"
+									:ui="{
+										title: 'text-xs font-medium',
+										description: 'text-xs break-all font-mono',
+									}"
 								/>
 
 								<UFormField
+									size="sm"
 									label="Custom RPC URL"
-									:hint="`Leave empty for built-in default (${defaultSolanaRpcUrl}).`"
+									:hint="`Empty = default (${defaultSolanaRpcUrl}).`"
 								>
 									<UInput
 										v-model="rpcDraft"
-										class="w-full font-mono text-sm"
+										size="sm"
+										class="w-full font-mono text-xs"
 										placeholder="https://…"
 										icon="i-lucide-link"
 										autocomplete="off"
 									/>
 								</UFormField>
 
-								<div class="flex flex-wrap gap-2">
+								<div class="flex flex-wrap justify-start gap-1.5">
 									<UButton
+										size="xs"
 										icon="i-lucide-save"
 										:disabled="rpcDraft.trim() === customSolanaRpc.trim()"
 										@click="saveRpc"
@@ -353,6 +425,7 @@ function resetAccent() {
 										Save RPC
 									</UButton>
 									<UButton
+										size="xs"
 										color="neutral"
 										variant="soft"
 										icon="i-lucide-rotate-ccw"
@@ -365,11 +438,12 @@ function resetAccent() {
 									</UButton>
 									<UButton
 										v-if="rpcDraft !== customSolanaRpc"
+										size="xs"
 										color="neutral"
 										variant="ghost"
 										@click="discardRpcDraft"
 									>
-										Discard edits
+										Discard
 									</UButton>
 								</div>
 							</div>

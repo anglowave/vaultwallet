@@ -52,10 +52,10 @@ fn new_database(kdf_strength: u32) -> Database {
 	let mut salt = vec![0u8; 32];
 	rand::thread_rng().fill_bytes(&mut salt);
 	let (memory_bytes, iterations, parallelism) = match level {
-		0 => (16_u64 * 1024 * 1024, 6_u32, 1_u32),
-		1 => (64_u64 * 1024 * 1024, 10_u32, 2_u32),
-		2 => (128_u64 * 1024 * 1024, 14_u32, 2_u32),
-		_ => (256_u64 * 1024 * 1024, 20_u32, 2_u32),
+		0 => (2_u64 * 1024 * 1024, 4_u32, 1_u32),
+		1 => (8_u64 * 1024 * 1024, 7_u32, 2_u32),
+		2 => (16_u64 * 1024 * 1024, 10_u32, 2_u32),
+		_ => (32_u64 * 1024 * 1024, 14_u32, 2_u32),
 	};
 	let mut root = Group::new(Uuid::new_v4());
 	root.name = "Root".into();

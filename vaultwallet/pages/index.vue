@@ -26,10 +26,10 @@ const createKdfStrength = ref(1)
 const sessionPassword = ref('')
 
 const KDF_PRESETS = [
-	{ title: 'Quick', detail: '~16 MB' },
-	{ title: 'Balanced', detail: '~64 MB' },
-	{ title: 'Strong', detail: '~128 MB' },
-	{ title: 'Maximum', detail: '~256 MB' },
+	{ title: 'Quick', detail: '~2 MB' },
+	{ title: 'Balanced', detail: '~8 MB' },
+	{ title: 'Strong', detail: '~16 MB' },
+	{ title: 'Maximum', detail: '~32 MB' },
 ] as const
 
 const activeKdfPreset = computed(
@@ -705,28 +705,6 @@ watch(entryMenuOpen, (open) => {
 			class="flex flex-1 items-center justify-center overflow-auto p-6"
 		>
 			<UCard class="w-full max-w-md overflow-hidden shadow-lg">
-				<template #header>
-					<div class="flex items-center gap-2.5">
-						<div
-							class="flex size-9 items-center justify-center rounded-lg bg-primary/15"
-						>
-							<UIcon name="i-lucide-shield" class="text-primary size-5" />
-						</div>
-						<div class="min-w-0">
-							<h1 class="text-highlighted text-base font-semibold">
-								VaultWallet
-							</h1>
-							<p class="text-muted text-xs">
-								{{
-									gateTab === 'create'
-										? 'New .wlvlt — path, password, Argon2id cost.'
-										: 'Open your .wlvlt (local only).'
-								}}
-							</p>
-						</div>
-					</div>
-				</template>
-
 				<UTabs
 					v-model="gateTab"
 					:items="[
@@ -893,7 +871,6 @@ watch(entryMenuOpen, (open) => {
 							icon="i-lucide-settings"
 							aria-label="Settings"
 						/>
-						<UColorModeButton />
 						<UButton
 							color="neutral"
 							variant="soft"
