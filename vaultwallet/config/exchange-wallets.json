@@ -92,6 +92,21 @@
 				"5VCwKtCXgCJ6kit5FybXjvriW3xELsFDhYrPSqtJNmcD",
 				"is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV"
 			]
+		},
+		{
+			"name": "Bitget",
+			"icon": "/exchanges/bitget.svg",
+			"addresses": [
+				"A77HErqtfN1hLLpvZ9pCtu66FEtM8BveoaKbbMoZ4RiR"
+			]
+		},
+		{
+			"name": "Kucoin",
+			"icon": "/exchanges/kucoin.svg",
+			"addresses": [
+				"BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+				"HVh6wHNBAsG3pq1Bj5oCzRjoWKVogEDHwUHkRz3ekFgt"
+			]
 		}
 	]
 }
