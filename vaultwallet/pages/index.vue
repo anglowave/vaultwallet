@@ -200,16 +200,19 @@ const entryTableRows = computed(() =>
 		const pk = e.fields.PublicKey?.trim() || ''
 		const rawFunding = e.fields.Funding?.trim() || ''
 		const parsed = parseFundingField(rawFunding)
+		const fundingLabel = parsed
+			? fundingTableLabel(parsed)
+			: rawFunding || '—'
+		const fundingExchangeName = parsed?.exchange?.trim() || null
 		return {
 			id: e.id,
 			title: e.fields.Title?.trim() || '—',
 			publicKeyShort: pk ? truncateMiddle(pk, 6) : '—',
 			privateMask: e.fields.PrivateKey?.length ? '••••••••' : '—',
 			balance: e.fields.Balance?.trim() || '—',
-			fundingLabel: parsed
-				? fundingTableLabel(parsed)
-				: rawFunding || '—',
+			fundingLabel,
 			fundingIcon: parsed?.icon ?? null,
+			fundingExchangeName,
 		}
 	}),
 )
@@ -1307,8 +1310,21 @@ watch(entryMenuOpen, (open) => {
 								</template>
 								<template #fundingLabel-cell="{ row }">
 									<div class="flex min-w-0 items-center gap-2">
+										<UTooltip
+											v-if="
+												row.original.fundingIcon &&
+												row.original.fundingExchangeName
+											"
+											:text="row.original.fundingExchangeName"
+										>
+											<img
+												:src="row.original.fundingIcon"
+												alt=""
+												class="size-5 shrink-0 cursor-default rounded object-contain"
+											/>
+										</UTooltip>
 										<img
-											v-if="row.original.fundingIcon"
+											v-else-if="row.original.fundingIcon"
 											:src="row.original.fundingIcon"
 											alt=""
 											class="size-5 shrink-0 rounded object-contain"
