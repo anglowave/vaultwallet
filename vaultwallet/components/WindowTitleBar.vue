@@ -58,6 +58,14 @@ async function onTitleBarDblClick() {
 			class="titlebar-drag text-muted flex min-w-0 flex-1 items-center justify-start gap-2 py-2 pl-3 text-sm font-medium select-none"
 			@dblclick="onTitleBarDblClick"
 		>
+			<img
+				src="/logo.png"
+				alt=""
+				width="18"
+				height="18"
+				draggable="false"
+				class="shrink-0 object-contain invert dark:invert-0"
+			/>
 			<span class="text-highlighted truncate">vaultwallet</span>
 		</div>
 
