@@ -1,3 +1,4 @@
+mod biometric;
 mod solana;
 
 use rand::RngCore;
@@ -386,6 +387,49 @@ async fn solana_trace_funding(rpc_url: String, wallet: String) -> Result<Option<
 	solana::trace_funding(&rpc_url, &wallet).await
 }
 
+#[tauri::command]
+async fn biometric_available() -> Result<bool, String> {
+	tauri::async_runtime::spawn_blocking(biometric::available)
+		.await
+		.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn biometric_is_enrolled(app: tauri::AppHandle, path: String) -> Result<bool, String> {
+	biometric::is_enrolled(&app, &path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn biometric_enroll(
+	app: tauri::AppHandle,
+	path: String,
+	password: String,
+) -> Result<(), String> {
+	tauri::async_runtime::spawn_blocking(move || {
+		biometric::enroll(&app, &path, &password).map_err(|e| e.to_string())
+	})
+	.await
+	.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn biometric_unlock(app: tauri::AppHandle, path: String) -> Result<String, String> {
+	tauri::async_runtime::spawn_blocking(move || {
+		biometric::unlock(&app, &path).map_err(|e| e.to_string())
+	})
+	.await
+	.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn biometric_disable(app: tauri::AppHandle, path: String) -> Result<(), String> {
+	tauri::async_runtime::spawn_blocking(move || {
+		biometric::disable(&app, &path).map_err(|e| e.to_string())
+	})
+	.await
+	.map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
 	tauri::Builder::default()
@@ -404,6 +448,11 @@ pub fn run() {
 			solana_public_key_from_private,
 			solana_fetch_balance,
 			solana_trace_funding,
+			biometric_available,
+			biometric_is_enrolled,
+			biometric_enroll,
+			biometric_unlock,
+			biometric_disable,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

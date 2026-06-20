@@ -359,6 +359,105 @@ async function pickVaultFile() {
 	}
 }
 
+// --- Biometric unlock (Windows Hello / Touch ID) ---------------------------
+const biometricSupported = ref(false)
+const biometricEnrolled = ref(false)
+const biometricBusy = ref(false)
+
+const canBiometricUnlock = computed(
+	() =>
+		phase.value === 'gate' &&
+		gateTab.value === 'open' &&
+		biometricSupported.value &&
+		biometricEnrolled.value,
+)
+
+async function refreshBiometricEnrolled() {
+	const p = vaultPath.value.trim()
+	if (!biometricSupported.value || !p) {
+		biometricEnrolled.value = false
+		return
+	}
+	try {
+		biometricEnrolled.value = await tauri.biometricIsEnrolled(p)
+	} catch {
+		biometricEnrolled.value = false
+	}
+}
+
+onMounted(async () => {
+	try {
+		biometricSupported.value = await tauri.biometricAvailable()
+	} catch {
+		biometricSupported.value = false
+	}
+	await refreshBiometricEnrolled()
+})
+
+watch(vaultPath, () => {
+	void refreshBiometricEnrolled()
+})
+
+async function handleBiometricUnlock() {
+	const p = vaultPath.value.trim()
+	if (!p) {
+		toast.add({ title: 'Select a vault file first', color: 'warning' })
+		return
+	}
+	loading.value = true
+	try {
+		const pw = await tauri.biometricUnlock(p)
+		const t = await tauri.vaultOpen(p, pw)
+		tree.value = t
+		sessionPassword.value = pw
+		password.value = ''
+		selectedGroupId.value = t.root.id
+		phase.value = 'vault'
+		toast.add({ title: 'Vault unlocked', color: 'success' })
+	} catch (e) {
+		showError(e)
+	} finally {
+		loading.value = false
+	}
+}
+
+async function enableBiometric() {
+	const p = vaultPath.value.trim()
+	if (!p || !sessionPassword.value) {
+		toast.add({ title: 'Open a vault first', color: 'warning' })
+		return
+	}
+	biometricBusy.value = true
+	try {
+		await tauri.biometricEnroll(p, sessionPassword.value)
+		biometricEnrolled.value = true
+		toast.add({
+			title: 'Biometric unlock enabled',
+			description: 'Use Windows Hello to unlock this vault next time.',
+			color: 'success',
+		})
+	} catch (e) {
+		showError(e)
+	} finally {
+		biometricBusy.value = false
+	}
+}
+
+async function disableBiometric() {
+	const p = vaultPath.value.trim()
+	if (!p) return
+	biometricBusy.value = true
+	try {
+		await tauri.biometricDisable(p)
+		biometricEnrolled.value = false
+		toast.add({ title: 'Biometric unlock disabled', color: 'neutral' })
+	} catch (e) {
+		showError(e)
+	} finally {
+		biometricBusy.value = false
+	}
+}
+
 /** Strip illegal path chars; ensure `.wlvlt` suffix. */
 function normalizeCreateVaultFileName(raw: string): string {
 	let t = raw
@@ -385,6 +484,7 @@ async function handleOpenVault() {
 		password.value = ''
 		selectedGroupId.value = t.root.id
 		phase.value = 'vault'
+		await refreshBiometricEnrolled()
 		toast.add({ title: 'Vault unlocked', color: 'success' })
 	} catch (e) {
 		showError(e)
@@ -886,7 +986,15 @@ watch(entryMenuOpen, (open) => {
 
 <template>
 	<div class="bg-default flex h-full min-h-0 flex-col overflow-hidden">
-		<VaultSettingsModal v-model:open="settingsModalOpen" />
+		<VaultSettingsModal
+			v-model:open="settingsModalOpen"
+			:biometric-supported="biometricSupported"
+			:biometric-enrolled="biometricEnrolled"
+			:biometric-can-manage="vaultUnlocked"
+			:biometric-busy="biometricBusy"
+			@enable-biometric="enableBiometric"
+			@disable-biometric="disableBiometric"
+		/>
 
 		<!-- Gate: open / create -->
 		<div
@@ -1144,6 +1252,17 @@ watch(entryMenuOpen, (open) => {
 						</div>
 					</div>
 
+					<UButton
+						v-if="canBiometricUnlock"
+						block
+						color="neutral"
+						variant="soft"
+						:loading="loading"
+						icon="i-lucide-fingerprint"
+						@click="handleBiometricUnlock"
+					>
+						Unlock with Windows Hello
+					</UButton>
 					<UButton
 						v-if="gateTab === 'open'"
 						block

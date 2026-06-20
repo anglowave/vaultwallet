@@ -6,6 +6,26 @@ import {
 
 const open = defineModel<boolean>('open', { default: false })
 
+withDefaults(
+	defineProps<{
+		biometricSupported?: boolean
+		biometricEnrolled?: boolean
+		biometricCanManage?: boolean
+		biometricBusy?: boolean
+	}>(),
+	{
+		biometricSupported: false,
+		biometricEnrolled: false,
+		biometricCanManage: false,
+		biometricBusy: false,
+	},
+)
+
+const emit = defineEmits<{
+	(e: 'enable-biometric'): void
+	(e: 'disable-biometric'): void
+}>()
+
 const toast = useToast()
 const {
 	customSolanaRpc,
@@ -252,6 +272,70 @@ const settingsCardUi = {
 									<span class="text-muted text-xs">sec</span>
 								</div>
 							</UFormField>
+						</UCard>
+
+						<UCard :ui="settingsCardUi">
+							<template #header>
+								<h2 class="text-highlighted text-sm font-semibold">
+									Biometric unlock
+								</h2>
+							</template>
+
+							<UAlert
+								v-if="!biometricSupported"
+								color="neutral"
+								variant="subtle"
+								class="text-xs"
+								icon="i-lucide-fingerprint"
+								title="Not available"
+								description="Windows Hello (PIN, fingerprint, or face) is not set up on this device."
+								:ui="{
+									title: 'text-xs font-medium',
+									description: 'text-xs',
+								}"
+							/>
+
+							<div v-else-if="!biometricCanManage" class="text-muted text-xs">
+								Open a vault to enable Windows Hello unlock for it.
+							</div>
+
+							<div v-else class="space-y-3">
+								<p class="text-muted text-xs">
+									Stores an encrypted copy of this vault's master password,
+									protected by Windows Hello. You can then unlock without
+									typing the password. Disabling removes the stored copy.
+								</p>
+								<div class="flex flex-wrap items-center gap-2">
+									<UBadge
+										v-if="biometricEnrolled"
+										color="success"
+										variant="subtle"
+										icon="i-lucide-check"
+									>
+										Enabled for this vault
+									</UBadge>
+									<UButton
+										v-if="!biometricEnrolled"
+										size="xs"
+										icon="i-lucide-fingerprint"
+										:loading="biometricBusy"
+										@click="emit('enable-biometric')"
+									>
+										Enable Windows Hello
+									</UButton>
+									<UButton
+										v-else
+										size="xs"
+										color="error"
+										variant="soft"
+										icon="i-lucide-trash-2"
+										:loading="biometricBusy"
+										@click="emit('disable-biometric')"
+									>
+										Disable
+									</UButton>
+								</div>
+							</div>
 						</UCard>
 					</div>
 				</template>

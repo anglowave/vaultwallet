@@ -123,6 +123,26 @@ export function useVaultTauri() {
 		return invoke<string | null>('solana_trace_funding', { rpcUrl, wallet })
 	}
 
+	async function biometricAvailable(): Promise<boolean> {
+		return invoke<boolean>('biometric_available')
+	}
+
+	async function biometricIsEnrolled(path: string): Promise<boolean> {
+		return invoke<boolean>('biometric_is_enrolled', { path })
+	}
+
+	async function biometricEnroll(path: string, password: string): Promise<void> {
+		await invoke('biometric_enroll', { path, password })
+	}
+
+	async function biometricUnlock(path: string): Promise<string> {
+		return invoke<string>('biometric_unlock', { path })
+	}
+
+	async function biometricDisable(path: string): Promise<void> {
+		await invoke('biometric_disable', { path })
+	}
+
 	return {
 		vaultCreate,
 		vaultOpen,
@@ -135,5 +155,10 @@ export function useVaultTauri() {
 		solanaPublicKeyFromPrivate,
 		solanaFetchBalance,
 		solanaTraceFunding,
+		biometricAvailable,
+		biometricIsEnrolled,
+		biometricEnroll,
+		biometricUnlock,
+		biometricDisable,
 	}
 }
