@@ -1,4 +1,4 @@
-# VaultWallet
+# vaultwallet
 
 Desktop app for managing **Solana wallets** inside an **encrypted vault** (`.wlvlt`). The UI is a **Nuxt** single-page app hosted inside **Tauri 2**; all vault I/O and crypto run in **Rust** via [vaultwallet-core](vaultwallet-core/), which implements a **KDBX 4.1–compatible** on-disk format (same binary layout as KeePass 4.x, with a VaultWallet-specific extension and branding).
 
