@@ -11,6 +11,7 @@ import { fundingTableLabel, parseFundingField } from '~/utils/fundingPayload'
 
 const toast = useToast()
 const tauri = useVaultTauri()
+const clipboard = useSecureClipboard()
 const {
 	solRpcUrl,
 	lockAfterInactiveSeconds,
@@ -843,7 +844,7 @@ async function copyEntryKey(kind: 'public' | 'private') {
 	}
 	clearPrivateClipboardTimer()
 	try {
-		await navigator.clipboard.writeText(text)
+		await clipboard.copy(text)
 		toast.add({
 			title: kind === 'public' ? 'Public key copied' : 'Private key copied',
 			color: 'success',
@@ -851,13 +852,9 @@ async function copyEntryKey(kind: 'public' | 'private') {
 		if (kind === 'private') {
 			const sec = clearPrivateClipboardAfterSeconds.value
 			if (sec > 0) {
-				privateClipboardClearTimer = setTimeout(async () => {
+				privateClipboardClearTimer = setTimeout(() => {
 					privateClipboardClearTimer = null
-					try {
-						await navigator.clipboard.writeText('')
-					} catch {
-						/* some hosts reject empty clipboard writes */
-					}
+					void clipboard.clearIfMatches(text)
 				}, sec * 1000)
 			}
 		}
