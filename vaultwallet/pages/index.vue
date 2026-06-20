@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
 import { join } from '@tauri-apps/api/path'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import {
 	entryDisplayName,
 	findGroup,
 	truncateMiddle,
+	type VaultEntry,
 	type VaultTree,
 } from '~/types/vault'
 import { fundingTableLabel, parseFundingField } from '~/utils/fundingPayload'
@@ -208,6 +210,7 @@ const entryTableRows = computed(() =>
 		return {
 			id: e.id,
 			title: e.fields.Title?.trim() || '—',
+			publicKey: pk,
 			publicKeyShort: pk ? truncateMiddle(pk, 6) : '—',
 			privateMask: e.fields.PrivateKey?.length ? '••••••••' : '—',
 			balance: e.fields.Balance?.trim() || '—',
@@ -217,6 +220,44 @@ const entryTableRows = computed(() =>
 		}
 	}),
 )
+
+// --- Entry search + row selection ------------------------------------------
+const entrySearch = ref('')
+const selectedEntryId = ref<string | null>(null)
+
+const selectedEntry = computed<VaultEntry | null>(
+	() => groupEntries.value.find((e) => e.id === selectedEntryId.value) ?? null,
+)
+
+const filteredEntryRows = computed(() => {
+	const q = entrySearch.value.trim().toLowerCase()
+	if (!q) return entryTableRows.value
+	return entryTableRows.value.filter((r) =>
+		[r.title, r.publicKey, r.balance, r.fundingLabel].some((v) =>
+			v?.toLowerCase().includes(q),
+		),
+	)
+})
+
+const entryTableEmpty = computed(() =>
+	entrySearch.value.trim()
+		? 'No wallets match your search.'
+		: 'No wallets in this folder. Use Add wallet to create one.',
+)
+
+const entryTableMeta = computed(() => ({
+	class: {
+		tr: (row: { original: { id: string } }) =>
+			row.original.id === selectedEntryId.value
+				? 'bg-elevated/60 data-[selectable=true]:hover:bg-elevated/60'
+				: '',
+	},
+}))
+
+watch(selectedGroupId, () => {
+	selectedEntryId.value = null
+	entrySearch.value = ''
+})
 
 const entryTableColumns = [
 	{ accessorKey: 'title', header: 'Name' },
@@ -640,6 +681,8 @@ function lockVault(reason: 'manual' | 'idle' = 'manual') {
 	tree.value = null
 	sessionPassword.value = ''
 	selectedGroupId.value = null
+	selectedEntryId.value = null
+	entrySearch.value = ''
 	editModalOpen.value = false
 	settingsModalOpen.value = false
 	deletePendingEntryId.value = null
@@ -913,9 +956,7 @@ const entryMenuItems = computed(() => {
 				label: 'Copy public key',
 				icon: 'i-lucide-copy',
 				disabled: !pk,
-				onSelect: () => {
-					void copyEntryKey('public')
-				},
+				onSelect: () => copyMenuKey('public'),
 			},
 		],
 		[
@@ -923,16 +964,13 @@ const entryMenuItems = computed(() => {
 				label: 'Copy private key',
 				icon: 'i-lucide-key-round',
 				disabled: !sk,
-				onSelect: () => {
-					void copyEntryKey('private')
-				},
+				onSelect: () => copyMenuKey('private'),
 			},
 		],
 	]
 })
 
-async function copyEntryKey(kind: 'public' | 'private') {
-	const ent = entryMenuTargetEntry.value
+async function copyKey(ent: VaultEntry | null, kind: 'public' | 'private') {
 	if (!ent) return
 	const text =
 		kind === 'public'
@@ -960,9 +998,12 @@ async function copyEntryKey(kind: 'public' | 'private') {
 		}
 	} catch {
 		toast.add({ title: 'Could not copy to clipboard', color: 'error' })
-	} finally {
-		entryMenuOpen.value = false
 	}
+}
+
+function copyMenuKey(kind: 'public' | 'private') {
+	void copyKey(entryMenuTargetEntry.value, kind)
+	entryMenuOpen.value = false
 }
 
 function onEntryRowContextmenu(
@@ -971,6 +1012,7 @@ function onEntryRowContextmenu(
 ) {
 	if (!(e instanceof MouseEvent)) return
 	e.preventDefault()
+	selectedEntryId.value = row.original.id
 	entryMenuTargetId.value = row.original.id
 	entryMenuPos.value = { x: e.clientX, y: e.clientY }
 	nextTick(() => {
@@ -978,9 +1020,64 @@ function onEntryRowContextmenu(
 	})
 }
 
+function onEntryRowSelect(_e: Event, row: { original: { id: string } }) {
+	selectedEntryId.value = row.original.id
+}
+
 watch(entryMenuOpen, (open) => {
 	if (!open) entryMenuTargetId.value = null
 })
+
+// --- Keyboard shortcuts ----------------------------------------------------
+function focusEntrySearch() {
+	nextTick(() => {
+		const el = document.getElementById('vw-entry-search') as
+			| HTMLInputElement
+			| null
+		el?.focus()
+		el?.select()
+	})
+}
+
+function isTypingTarget(node: EventTarget | null): boolean {
+	const el = node as HTMLElement | null
+	if (!el) return false
+	return (
+		el.tagName === 'INPUT' ||
+		el.tagName === 'TEXTAREA' ||
+		el.isContentEditable
+	)
+}
+
+function onGlobalKeydown(e: KeyboardEvent) {
+	if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+	const key = e.key.toLowerCase()
+
+	// Shortcuts below act on the unlocked vault only.
+	if (phase.value !== 'vault') return
+
+	if (key === 'f') {
+		e.preventDefault()
+		focusEntrySearch()
+	} else if (key === 'l') {
+		e.preventDefault()
+		lockVault('manual')
+	} else if (key === 'n') {
+		if (!selectedGroup.value || loading.value) return
+		e.preventDefault()
+		openCreateWalletModal()
+	} else if (key === 'c') {
+		// Copy the selected wallet's public key — but never hijack a real
+		// text copy (active input or a live text selection).
+		if (isTypingTarget(document.activeElement)) return
+		if ((window.getSelection?.()?.toString() ?? '').length > 0) return
+		if (!selectedEntry.value) return
+		e.preventDefault()
+		void copyKey(selectedEntry.value, 'public')
+	}
+}
+
+useEventListener(window, 'keydown', onGlobalKeydown)
 
 </script>
 
@@ -1397,13 +1494,36 @@ watch(entryMenuOpen, (open) => {
 								{{ groupEntries.length === 1 ? 'wallet' : 'wallets' }} in this folder
 							</p>
 						</div>
-						<UButton
-							icon="i-lucide-plus"
-							:disabled="!selectedGroup || loading"
-							@click="openCreateWalletModal"
-						>
-							Add wallet
-						</UButton>
+						<div class="flex items-center gap-2">
+							<UInput
+								id="vw-entry-search"
+								v-model="entrySearch"
+								size="sm"
+								class="w-48"
+								placeholder="Search wallets…"
+								icon="i-lucide-search"
+								autocomplete="off"
+								:disabled="!selectedGroup"
+							>
+								<template v-if="entrySearch" #trailing>
+									<UButton
+										color="neutral"
+										variant="link"
+										size="xs"
+										icon="i-lucide-x"
+										aria-label="Clear search"
+										@click="entrySearch = ''"
+									/>
+								</template>
+							</UInput>
+							<UButton
+								icon="i-lucide-plus"
+								:disabled="!selectedGroup || loading"
+								@click="openCreateWalletModal"
+							>
+								Add wallet
+							</UButton>
+						</div>
 					</div>
 
 					<div
@@ -1411,14 +1531,36 @@ watch(entryMenuOpen, (open) => {
 					>
 						<UCard v-if="selectedGroup" class="min-w-0">
 							<UTable
-								:data="entryTableRows"
+								:data="filteredEntryRows"
 								:columns="entryTableColumns"
 								:loading="loading || balancesRefreshing"
-								empty="No wallets in this folder. Use Add wallet to create one."
+								:empty="entryTableEmpty"
+								:meta="entryTableMeta"
 								class="w-full min-w-[44rem] shrink-0"
 								:get-row-id="entryRowId"
+								:on-select="onEntryRowSelect"
 								:on-contextmenu="onEntryRowContextmenu"
 							>
+								<template #title-cell="{ row }">
+									<div class="flex items-center gap-2">
+										<span
+											class="size-1.5 shrink-0 rounded-full"
+											:class="
+												row.original.id === selectedEntryId
+													? 'bg-primary'
+													: 'bg-transparent'
+											"
+										/>
+										<span
+											:class="
+												row.original.id === selectedEntryId
+													? 'text-highlighted font-medium'
+													: ''
+											"
+											>{{ row.original.title }}</span
+										>
+									</div>
+								</template>
 								<template #balance-cell="{ row }">
 									<span class="font-mono text-sm tabular-nums">{{
 										row.original.balance
